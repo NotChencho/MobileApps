@@ -91,7 +91,7 @@ fun ExploreScreen(
                 } else {
                     // Restaurant list
                     Text(
-                        text = "Nearby Restaurants",
+                        text = "Nearby Restaurants !",
                         style = MaterialTheme.typography.titleMedium,
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                     )
