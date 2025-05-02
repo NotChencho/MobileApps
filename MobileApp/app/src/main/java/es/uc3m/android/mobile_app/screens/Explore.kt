@@ -95,7 +95,11 @@ fun ExploreScreen(
                         style = MaterialTheme.typography.titleMedium,
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                     )
-
+                    Text(
+                        text = "Nearby Restaurants",
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                    )
                     LazyColumn(
                         modifier = Modifier.weight(1f)
                     ) {
