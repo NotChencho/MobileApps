@@ -453,11 +453,17 @@ fun MyNavigationBar(
                     if (item.route == "logout_action") {
                         viewModel.logout()
                     } else {
+                        // --- Handle Regular Navigation ---
+                        // Always navigate to the selected destination
                         navController.navigate(item.route) {
-                            popUpTo(navController.graph.findStartDestination().id) {
-                                saveState = true
+                            // Pop up to the destination route itself, inclusively.
+                            // This clears any screens that were pushed on top of this destination within the tab.
+                            popUpTo(item.route) {
+                                inclusive = true
                             }
+                            // Avoid multiple copies of the same destination when reselecting the same item
                             launchSingleTop = true
+                            // Restore state when navigating back to previously visited destinations
                             restoreState = true
                         }
                     }

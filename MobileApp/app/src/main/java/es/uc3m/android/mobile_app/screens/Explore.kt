@@ -43,11 +43,11 @@ fun ExploreScreen(
     val restaurantsState by viewModel.restaurants.collectAsState()
 
     Column(modifier = Modifier.fillMaxSize()) {
-        // Google Maps with Rounded Corners
+        // Section 1: Google Maps (Takes 1/3 of total height)
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(250.dp)
+                .weight(1f) // Assign 1/3 of the total available height
                 .padding(16.dp)
                 .clip(RoundedCornerShape(24.dp))
                 .background(Color.LightGray)
@@ -55,77 +55,76 @@ fun ExploreScreen(
             GoogleMapWidget(restaurantsState)
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Display restaurants or friends activity
-        when (restaurantsState) {
-            is DataState.Loading -> {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator()
-                }
-            }
-
-            is DataState.Error -> {
-                val errorMessage = (restaurantsState as DataState.Error).message
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text("Error: $errorMessage")
-                }
-            }
-
-            is DataState.Success -> {
-                val restaurants = (restaurantsState as DataState.Success<List<Restaurant>>).data
-
-                if (restaurants.isEmpty()) {
+        // Container for Section 2 & 3 (Takes the remaining 2/3 height)
+        Column(modifier = Modifier.weight(2f)) {
+            when (restaurantsState) {
+                is DataState.Loading -> {
                     Box(
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = Modifier.fillMaxSize(), // Fill the 2/3 parent
                         contentAlignment = Alignment.Center
                     ) {
-                        Text("No restaurants found")
+                        CircularProgressIndicator()
                     }
-                } else {
-                    // Restaurant list
-                    Text(
-                        text = "Nearby Restaurants",
-                        style = MaterialTheme.typography.titleMedium,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                    )
-                    Text(
-                        text = "Nearby Restaurants",
-                        style = MaterialTheme.typography.titleMedium,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                    )
-                    LazyColumn(
-                        modifier = Modifier.weight(1f)
+                }
+
+                is DataState.Error -> {
+                    val errorMessage = (restaurantsState as DataState.Error).message
+                    Box(
+                        modifier = Modifier.fillMaxSize(), // Fill the 2/3 parent
+                        contentAlignment = Alignment.Center
                     ) {
-                        items(restaurants) { restaurant ->
-                            RestaurantItem(
-                                restaurant = restaurant,
-                                onClick = {
-                                    // Set the selected restaurant in the ViewModel
-                                    viewModel.setSelectedRestaurant(restaurant)
-                                    // Navigate to details screen WITH the restaurant ID
-                                    navController.navigate(NavGraph.RestaurantDetails.createRoute(restaurant.id))
-                                }
+                        Text("Error: $errorMessage")
+                    }
+                }
+
+                is DataState.Success -> {
+                    val restaurants = (restaurantsState as DataState.Success<List<Restaurant>>).data
+
+                    if (restaurants.isEmpty()) {
+                        Box(
+                            modifier = Modifier.fillMaxSize(), // Fill the 2/3 parent
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text("No restaurants found")
+                        }
+                    } else {
+                        // Section 2: Restaurant List (Takes 1/2 of the 2/3 container = 1/3 of total)
+                        Column(modifier = Modifier.weight(1f)) { // Takes 1/2 of its parent's height
+                            Text(
+                                text = "Nearby Restaurants",
+                                style = MaterialTheme.typography.titleMedium,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                             )
-                            Divider(modifier = Modifier.padding(horizontal = 16.dp))
+
+                            LazyColumn(
+                                modifier = Modifier.fillMaxSize() // Fill the space provided by the weighted parent Column
+                            ) {
+                                items(restaurants) { restaurant ->
+                                    RestaurantItem(
+                                        restaurant = restaurant,
+                                        onClick = {
+                                            viewModel.setSelectedRestaurant(restaurant)
+                                            navController.navigate(NavGraph.RestaurantDetails.createRoute(restaurant.id))
+                                        }
+                                    )
+                                    Divider(modifier = Modifier.padding(horizontal = 16.dp))
+                                }
+                            }
+                        }
+
+                        // Section 3: Friends Activity (Takes 1/2 of the 2/3 container = 1/3 of total)
+                        // Call the composable that provides the content for the friends activity section
+                        Column(modifier = Modifier.weight(1f)) { // Takes 1/2 of its parent's height
+                            FriendsActivitySectionContent(navController = navController) // Call the content composable
                         }
                     }
                 }
             }
         }
-
-        // We can still show friends activity at the bottom if needed
-        FriendsActivitySection(navController = navController)
     }
 }
 
-// Google Maps Widget that shows restaurant markers
+// Google Maps Widget (No changes needed here)
 @Composable
 fun GoogleMapWidget(
     restaurantsState: DataState<List<Restaurant>>
@@ -137,28 +136,22 @@ fun GoogleMapWidget(
     }
 
     GoogleMap(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier.fillMaxSize(), // Fill the parent Box
         cameraPositionState = cameraPositionState
     ) {
-        // Draw the default marker for Madrid
         Marker(
             state = MarkerState(position = madrid),
             title = "Madrid",
             snippet = "Capital of Spain"
         )
 
-        // If we have restaurant data, draw markers for each restaurant
         if (restaurantsState is DataState.Success) {
             val restaurants = (restaurantsState as DataState.Success<List<Restaurant>>).data
-
             restaurants.forEach { restaurant ->
-                // Create a LatLng from the restaurant's location
                 val position = LatLng(
                     restaurant.location.latitude,
                     restaurant.location.longitude
                 )
-
-                // Add a marker for this restaurant
                 Marker(
                     state = MarkerState(position = position),
                     title = restaurant.name,
@@ -169,6 +162,7 @@ fun GoogleMapWidget(
     }
 }
 
+// Restaurant Item Composable (No changes needed here)
 @Composable
 fun RestaurantItem(
     restaurant: Restaurant,
@@ -180,118 +174,96 @@ fun RestaurantItem(
             .clickable(onClick = onClick)
             .padding(16.dp)
     ) {
-        // Restaurant image placeholder
         Box(
             modifier = Modifier
                 .size(80.dp)
                 .clip(RoundedCornerShape(8.dp))
                 .background(Color.LightGray)
         ) {
-            // In a real app, use an image loading library like Coil
-            // AsyncImage(
-            //   model = restaurant.imageUrl,
-            //   contentDescription = restaurant.name,
-            //   modifier = Modifier.fillMaxSize(),
-            //   contentScale = ContentScale.Crop
-            // )
+            // Image placeholder
         }
-
         Spacer(modifier = Modifier.width(16.dp))
-
-        Column(
-            modifier = Modifier.weight(1f)
-        ) {
-            Text(
-                text = restaurant.name,
-                style = MaterialTheme.typography.titleMedium,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-
-            Text(
-                text = restaurant.cuisine,
-                style = MaterialTheme.typography.bodyMedium,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-
+        Column(modifier = Modifier.weight(1f)) {
+            Text(text = restaurant.name, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(text = restaurant.cuisine, style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Spacer(modifier = Modifier.height(4.dp))
-
-            Row(
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "⭐ ${restaurant.rating}",
-                    style = MaterialTheme.typography.bodySmall
-                )
-
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(text = "⭐ ${restaurant.rating}", style = MaterialTheme.typography.bodySmall)
                 Spacer(modifier = Modifier.width(8.dp))
-
-                Text(
-                    text = restaurant.priceRange,
-                    style = MaterialTheme.typography.bodySmall
-                )
-
+                Text(text = restaurant.priceRange, style = MaterialTheme.typography.bodySmall)
                 Spacer(modifier = Modifier.width(8.dp))
-
-                Text(
-                    text = restaurant.distance,
-                    style = MaterialTheme.typography.bodySmall
-                )
+                Text(text = restaurant.distance, style = MaterialTheme.typography.bodySmall)
             }
         }
     }
 }
 
-@Composable
-fun FriendsActivitySection(navController: NavHostController) {
 
+// Composable that provides the CONTENT for the Friends Activity section
+@Composable
+fun FriendsActivitySectionContent(navController: NavHostController) {
     val friendsActivity = listOf(
         "David" to "Restaurant 1",
         "Ana" to "Restaurant 2",
-        "Mario" to "Restaurant 3"
+        "Mario" to "Restaurant 3",
+        // Add more friends here to test scrolling
+        "Carlos" to "Restaurant 4",
+        "Elena" to "Restaurant 5",
+        "Sergio" to "Restaurant 6",
+        "Laura" to "Restaurant 7",
+        "Javier" to "Restaurant 8",
+        "Sofia" to "Restaurant 9",
+        "Diego" to "Restaurant 10",
+        "Isabel" to "Restaurant 11",
+        "Miguel" to "Restaurant 12",
+        "Carmen" to "Restaurant 13",
+        "Pablo" to "Restaurant 14",
+        "Lucia" to "Restaurant 15"
     )
 
-    // Title
-    Text(
-        text = "Friends Recent Activity",
-        style = MaterialTheme.typography.titleMedium,
-        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-    )
+    // This Column contains the title and the scrollable list.
+    // It does NOT have a weight modifier here. Its size is determined by the parent Column in ExploreScreen.
+    Column(modifier = Modifier.fillMaxSize()) { // Fill the space given by the parent weighted Column
+        // Title
+        Text(
+            text = "Friends Recent Activity",
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+        )
 
-    // You can use a LazyColumn for better performance if the list grows
-    Column {
-        friendsActivity.forEach { (friendName, restaurantName) ->
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable {
-                        // Either navigate with a default ID or handle appropriately
-                        navController.navigate(NavGraph.RestaurantDetails.createRoute("s8ZtXxCwTlwKCt8Za1JL"))
-                    }
-
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
-            ) {
-                // Friend icon or avatar placeholder
-                Surface(
+        // LazyColumn for a scrollable list within this section
+        LazyColumn(
+            modifier = Modifier.fillMaxSize() // Fill the remaining space in THIS Column
+        ) {
+            items(friendsActivity) { (friendName, restaurantName) ->
+                Row(
                     modifier = Modifier
-                        .size(40.dp)
-                        .clip(RoundedCornerShape(50)),
-                    color = Color.LightGray
+                        .fillMaxWidth()
+                        .clickable {
+                            // Example navigation - ideally use a specific restaurant ID
+                            navController.navigate(NavGraph.RestaurantDetails.createRoute("s8ZtXxCwTlwKCt8Za1JL"))
+                        }
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
                 ) {
-                    // Could place an Icon or initial inside
-                }
-
-                Spacer(modifier = Modifier.width(8.dp))
-
-                Column {
-                    Text(text = friendName, style = MaterialTheme.typography.bodyLarge)
-                    Text(text = restaurantName, style = MaterialTheme.typography.bodyMedium)
+                    Surface(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(RoundedCornerShape(50)),
+                        color = Color.LightGray
+                    ) {
+                        // Could place an Icon or initial inside
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Column {
+                        Text(text = friendName, style = MaterialTheme.typography.bodyLarge)
+                        Text(text = restaurantName, style = MaterialTheme.typography.bodyMedium)
+                    }
                 }
             }
         }
     }
 }
+
 
 @Preview(showBackground = true)
 @Composable

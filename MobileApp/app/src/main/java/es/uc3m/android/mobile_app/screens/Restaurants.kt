@@ -138,8 +138,9 @@ fun RestaurantDetailsScreen(
             }
 
             // 6. List of Dishes based on selected tab
-            val recommendedDishes = restaurant.dishes.filter { it.isRecommended }
-            val otherDishes = restaurant.dishes.filter { !it.isRecommended }
+
+            val recommendedDishes = restaurant.dishes.filter { it.isRecommended == true }
+            val otherDishes = restaurant.dishes.filter { it.isRecommended != true }
 
             val dishesToShow = if (selectedTabIndex == 0) recommendedDishes else otherDishes
 
@@ -174,6 +175,7 @@ fun RestaurantDetailsScreen(
         }
     }
 }
+
 // Single dish item layout
 @Composable
 fun DishItem(dish: Dish) {
@@ -223,7 +225,6 @@ fun DishItem(dish: Dish) {
     }
 }
 
-
 data class Restaurant(
     @DocumentId val id: String = "", // This will automatically map to the Firestore document ID
     val name: String = "",
@@ -246,5 +247,5 @@ data class Dish(
     val rating: Int = 0,
     val imageUrl: String = "",
     val price: Double = 0.0,
-    val isRecommended: Boolean = false
+    val isRecommended: Boolean? = false
 )
