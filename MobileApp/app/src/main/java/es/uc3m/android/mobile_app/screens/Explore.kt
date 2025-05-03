@@ -29,6 +29,9 @@ import es.uc3m.android.mobile_app.ui.theme.MyAppTheme
 import es.uc3m.android.mobile_app.viewmodel.DataState
 import es.uc3m.android.mobile_app.viewmodel.MyViewModel
 import es.uc3m.android.mobile_app.viewmodel.UserPreferences
+import androidx.compose.ui.layout.ContentScale // Import ContentScale
+import androidx.compose.ui.res.painterResource // Import painterResource
+import coil.compose.AsyncImage // Import AsyncImage
 
 @Composable
 fun ExploreScreen(
@@ -147,7 +150,6 @@ fun ExploreScreen(
                             }
                         }
                     } else {
-                        // Section 2: Restaurant List (Takes 1/2 of the 2/3 container = 1/3 of total)
                         Column(modifier = Modifier.weight(1f)) { // Takes 1/2 of its parent's height
                             Row(
                                 modifier = Modifier
@@ -235,7 +237,7 @@ fun GoogleMapWidget(
 // Restaurant Item Composable (No changes needed here)
 @Composable
 fun RestaurantItem(
-    restaurant: Restaurant,
+    restaurant: Restaurant, // Assuming Restaurant has an imageUrl property
     onClick: () -> Unit
 ) {
     Row(
@@ -244,13 +246,22 @@ fun RestaurantItem(
             .clickable(onClick = onClick)
             .padding(16.dp)
     ) {
+        // Box for sizing and clipping the image
         Box(
             modifier = Modifier
-                .size(80.dp)
+                .size(80.dp) // Define the size of the image area
                 .clip(RoundedCornerShape(8.dp))
+                // Add a background color to the Box itself in case the placeholder/error is transparent
+                // or if the image loading takes time.
                 .background(Color.LightGray)
         ) {
-            // Image placeholder
+            // Use AsyncImage to load the restaurant photo
+            AsyncImage(
+                model = restaurant.imageUrl, // The URL of the restaurant's image
+                contentDescription = restaurant.name, // Accessibility: Describe the image
+                modifier = Modifier.fillMaxSize(), // Make the image fill the Box
+                contentScale = ContentScale.Crop, // Crop the image to fit the bounds
+                            )
         }
         Spacer(modifier = Modifier.width(16.dp))
         Column(modifier = Modifier.weight(1f)) {
@@ -267,6 +278,7 @@ fun RestaurantItem(
         }
     }
 }
+
 
 
 // Composable that provides the CONTENT for the Friends Activity section
