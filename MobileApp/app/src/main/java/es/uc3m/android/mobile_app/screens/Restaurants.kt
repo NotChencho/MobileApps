@@ -11,11 +11,10 @@ import androidx.compose.ui.*
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
-import androidx.navigation.compose.rememberNavController
 import es.uc3m.android.mobile_app.viewmodel.MyViewModel
 import com.google.firebase.firestore.DocumentId
 
@@ -150,7 +149,7 @@ fun RestaurantDetailsScreen(
                     .weight(1f) // Let the list take up remaining space
             ) {
                 items(dishesToShow) { dish ->
-                    DishItem(dish)
+                    DishItem(dish, restaurant.name, navController)
                     Divider(modifier = Modifier.padding(horizontal = 16.dp))
                 }
             }
@@ -176,9 +175,8 @@ fun RestaurantDetailsScreen(
     }
 }
 
-// Single dish item layout
 @Composable
-fun DishItem(dish: Dish) {
+fun DishItem(dish: Dish, restaurantName: String, navController: NavHostController) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -221,6 +219,30 @@ fun DishItem(dish: Dish) {
                 text = "€${dish.price}",
                 style = MaterialTheme.typography.bodyMedium
             )
+        }
+
+        // Review actions
+        Column {
+
+            Button(
+                onClick = {
+                    // Get the restaurant ID from the restaurant object
+                    // or use an empty string if somehow not available
+                    val restaurantIdToPass = ""
+                    navController.navigate("dish_review/${restaurantIdToPass}/${restaurantName}/${dish.name}")
+                },
+                modifier = Modifier.padding(bottom = 4.dp)
+            ) {
+                Text("Review", fontSize = 12.sp)
+            }
+
+            OutlinedButton(
+                onClick = {
+                    navController.navigate("dish_reviews_list/${restaurantName}/${dish.name}")
+                }
+            ) {
+                Text("See Reviews", fontSize = 12.sp)
+            }
         }
     }
 }

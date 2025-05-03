@@ -348,7 +348,7 @@ fun MyContent(
             MyProfileScreen(navController = navController, viewModel = viewModel)
         }
 
-        // Updated to handle restaurant detail navigation with optional ID
+        // Restaurant detail navigation with optional ID
         composable(
             NavGraph.RestaurantDetails.route,
             arguments = listOf(
@@ -364,6 +364,50 @@ fun MyContent(
                 navController = navController,
                 viewModel = viewModel,
                 restaurantId = restaurantId
+            )
+        }
+
+        // New: Dish Review Route
+        composable(
+            NavGraph.DishReview.route,
+            arguments = listOf(
+                navArgument("restaurantId") {
+                    type = NavType.StringType
+                    defaultValue = ""  // Add default value
+                },
+                navArgument("restaurantName") { type = NavType.StringType },
+                navArgument("dishName") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val restaurantId = backStackEntry.arguments?.getString("restaurantId") ?: ""
+            val restaurantName = backStackEntry.arguments?.getString("restaurantName") ?: ""
+            val dishName = backStackEntry.arguments?.getString("dishName") ?: ""
+
+            DishReviewScreen(
+                navController = navController,
+                viewModel = viewModel,
+                restaurantId = restaurantId,
+                restaurantName = restaurantName,
+                dishName = dishName
+            )
+        }
+
+        // New: Dish Reviews List Route
+        composable(
+            NavGraph.DishReviewsList.route,
+            arguments = listOf(
+                navArgument("restaurantName") { type = NavType.StringType },
+                navArgument("dishName") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val restaurantName = backStackEntry.arguments?.getString("restaurantName") ?: ""
+            val dishName = backStackEntry.arguments?.getString("dishName") ?: ""
+
+            DishReviewsListScreen(
+                navController = navController,
+                viewModel = viewModel,
+                restaurantName = restaurantName,
+                dishName = dishName
             )
         }
     }

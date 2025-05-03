@@ -106,6 +106,7 @@ class MyViewModel : ViewModel() {
         _isUserLoggedIn.value = auth.currentUser != null
         if (_isUserLoggedIn.value) {
             loadUserPreferences()
+            loadReviews() // Make sure reviews are loaded when app starts
         }
     }
 
@@ -321,4 +322,60 @@ class MyViewModel : ViewModel() {
             }
         }
     }
+
+    // --- Add Dish Review ---
+    fun addDishReview(review: Review, onSuccess: () -> Unit, onError: (String) -> Unit) {
+        val currentUser = auth.currentUser
+        if (currentUser != null) {
+            viewModelScope.launch {
+                try {
+                    // Add review to Firestore
+                    val reviewRef = db.collection("reviews").document()
+                    reviewRef.set(review).await()
+
+                    // Update local state
+                    val updatedReviews = _reviews.value.toMutableList()
+                    updatedReviews.add(review.copy(id = reviewRef.id))
+                    _reviews.value = updatedReviews
+
+                    onSuccess()
+                } catch (e: Exception) {
+                    onError(e.message ?: "Failed to add review")
+                }
+            }
+        } else {
+            onError("User not logged in")
+        }
+    }
+
+    // --- Get Reviews For Dish ---
+    fun getReviewsForDish(restaurantName: String, dishName: String): List<Review> {
+        return _reviews.value.filter {
+            it.restaurant == restaurantName && it.dish == dishName
+        }.sortedByDescending { it.timestamp }
+    }
+
+    // --- Get User Reviews ---
+    fun getUserReviews(): List<Review> {
+        val userEmail = auth.currentUser?.email ?: return emptyList()
+        return _reviews.value.filter { it.user == userEmail }
+    }
+
+    // --- Delete Review ---
+    fun deleteReview(reviewId: String, onSuccess: () -> Unit, onError: (String) -> Unit) {
+        viewModelScope.launch {
+            try {
+                db.collection("reviews").document(reviewId).delete().await()
+
+                // Update local state
+                val updatedReviews = _reviews.value.filter { it.id != reviewId }
+                _reviews.value = updatedReviews
+
+                onSuccess()
+            } catch (e: Exception) {
+                onError(e.message ?: "Failed to delete review")
+            }
+        }
+    }
 }
+
