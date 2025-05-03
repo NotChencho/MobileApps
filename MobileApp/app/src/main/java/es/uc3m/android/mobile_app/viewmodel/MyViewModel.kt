@@ -29,6 +29,23 @@ sealed class DataState<out T> {
     data class Error(val message: String) : DataState<Nothing>()
 }
 
+// --- Save Preferences Status ---
+sealed class SaveStatus {
+    object Idle : SaveStatus()
+    object Loading : SaveStatus()
+    object Success : SaveStatus()
+    data class Error(val message: String) : SaveStatus()
+}
+
+// --- User Preferences Data Class ---
+data class UserPreferences(
+    val foodType: String = "",
+    val priceRange: String = "",
+    val allergyPreference: String = "",
+    val otherPreference: String = "",
+    val date: String = ""
+)
+
 class MyViewModel : ViewModel() {
 
     private val auth: FirebaseAuth = FirebaseAuth.getInstance()
@@ -52,9 +69,21 @@ class MyViewModel : ViewModel() {
     private val _restaurants = MutableStateFlow<DataState<List<Restaurant>>>(DataState.Loading)
     val restaurants: StateFlow<DataState<List<Restaurant>>> = _restaurants
 
+    // --- Filtered Restaurants State ---
+    private val _filteredRestaurants = MutableStateFlow<DataState<List<Restaurant>>>(DataState.Loading)
+    val filteredRestaurants: StateFlow<DataState<List<Restaurant>>> = _filteredRestaurants
+
     // --- Selected Restaurant State ---
     private val _selectedRestaurant = MutableStateFlow<Restaurant?>(null)
     val selectedRestaurant: StateFlow<Restaurant?> = _selectedRestaurant
+
+    // --- User Preferences State ---
+    private val _userPreferences = MutableStateFlow<UserPreferences?>(null)
+    val userPreferences: StateFlow<UserPreferences?> = _userPreferences
+
+    // --- Save Preferences Status ---
+    private val _savePreferencesStatus = MutableStateFlow<SaveStatus>(SaveStatus.Idle)
+    val savePreferencesStatus: StateFlow<SaveStatus> = _savePreferencesStatus
 
     // --- Auth State Listener ---
     private val authStateListener = FirebaseAuth.AuthStateListener { firebaseAuth ->
@@ -63,6 +92,11 @@ class MyViewModel : ViewModel() {
         _isUserLoggedIn.value = firebaseUser != null
         if (firebaseUser == null) {
             _authResult.value = AuthResult.Idle
+            // Clear user preferences when logged out
+            _userPreferences.value = null
+        } else {
+            // Load user preferences when logged in
+            loadUserPreferences()
         }
     }
 
@@ -70,6 +104,9 @@ class MyViewModel : ViewModel() {
         auth.addAuthStateListener(authStateListener)
         _user.value = auth.currentUser
         _isUserLoggedIn.value = auth.currentUser != null
+        if (_isUserLoggedIn.value) {
+            loadUserPreferences()
+        }
     }
 
     override fun onCleared() {
@@ -84,6 +121,7 @@ class MyViewModel : ViewModel() {
             try {
                 auth.signInWithEmailAndPassword(email, password).await()
                 _authResult.value = AuthResult.Success
+                loadUserPreferences()
             } catch (e: Exception) {
                 _authResult.value = AuthResult.Error(e.message ?: "Login failed")
             }
@@ -117,6 +155,62 @@ class MyViewModel : ViewModel() {
     // --- Reset Auth Result ---
     fun resetAuthResult() {
         _authResult.value = AuthResult.Idle
+    }
+
+    // --- Load User Preferences ---
+    fun loadUserPreferences() {
+        val currentUser = auth.currentUser
+        if (currentUser != null) {
+            viewModelScope.launch {
+                try {
+                    val userId = currentUser.uid
+                    val document = db.collection("userPreferences").document(userId).get().await()
+
+                    if (document.exists()) {
+                        val preferences = document.toObject(UserPreferences::class.java)
+                        _userPreferences.value = preferences
+
+                        // Apply filters after loading preferences
+                        applyFiltersToRestaurants()
+                    } else {
+                        // No preferences found, set default values
+                        _userPreferences.value = UserPreferences(
+                            foodType = "Italian",
+                            priceRange = "$",
+                            allergyPreference = "None",
+                            otherPreference = "Outdoor Seating",
+                            date = ""
+                        )
+                    }
+                } catch (e: Exception) {
+                    println("Error loading user preferences: ${e.message}")
+                }
+            }
+        }
+    }
+
+    // --- Save User Preferences ---
+    fun saveUserPreferences(preferences: UserPreferences) {
+        val currentUser = auth.currentUser
+        if (currentUser != null) {
+            viewModelScope.launch {
+                _savePreferencesStatus.value = SaveStatus.Loading
+                try {
+                    val userId = currentUser.uid
+                    db.collection("userPreferences").document(userId).set(preferences).await()
+
+                    _userPreferences.value = preferences
+                    _savePreferencesStatus.value = SaveStatus.Success
+
+                    // Apply filters after saving new preferences
+                    applyFiltersToRestaurants()
+                } catch (e: Exception) {
+                    _savePreferencesStatus.value = SaveStatus.Error(e.message ?: "Failed to save preferences")
+                }
+            }
+        } else {
+            _savePreferencesStatus.value = SaveStatus.Error("User not logged in")
+        }
     }
 
     // --- Load Reviews from Firestore ---
@@ -155,11 +249,41 @@ class MyViewModel : ViewModel() {
                         snapshot?.let {
                             val restaurantList = parseRestaurantsFromFirestore(it)
                             _restaurants.value = DataState.Success(restaurantList)
+
+                            // Apply filters after loading restaurants
+                            applyFiltersToRestaurants()
                         }
                     }
             } catch (e: Exception) {
                 _restaurants.value = DataState.Error(e.message ?: "Exception loading restaurants")
             }
+        }
+    }
+
+    // --- Apply Filters to Restaurants ---
+    private fun applyFiltersToRestaurants() {
+        val currentRestaurants = _restaurants.value
+        val preferences = _userPreferences.value
+
+        if (currentRestaurants is DataState.Success && preferences != null) {
+            val allRestaurants = currentRestaurants.data
+
+            // Apply filters based on preferences
+            val filtered = allRestaurants.filter { restaurant ->
+                // Filter by food type (cuisine)
+                val matchesFoodType = restaurant.cuisine.equals(preferences.foodType, ignoreCase = true)
+
+                // Filter by price range
+                val matchesPriceRange = restaurant.priceRange.equals(preferences.priceRange, ignoreCase = true)
+
+                // Return restaurants that match both criteria
+                matchesFoodType && matchesPriceRange
+            }
+
+            _filteredRestaurants.value = DataState.Success(filtered)
+        } else {
+            // If there are no preferences or restaurants, just pass through the original data
+            _filteredRestaurants.value = currentRestaurants
         }
     }
 
@@ -190,10 +314,6 @@ class MyViewModel : ViewModel() {
             try {
                 // Map the basic restaurant fields
                 val restaurant = doc.toObject(Restaurant::class.java) ?: return@mapNotNull null
-
-                // If any manual mapping is needed, do it here
-                // For example, if dishes are stored in a subcollection, you might need to fetch them separately
-
                 restaurant
             } catch (e: Exception) {
                 println("Error parsing restaurant document ${doc.id}: ${e.message}")
