@@ -66,6 +66,7 @@ dependencies {
     implementation(libs.firebase.firestore)
     implementation(libs.firebase.auth)
     implementation(libs.androidx.runtime.livedata)
+    implementation("io.coil-kt:coil-compose:2.6.0") // Use the latest version of Coil
 
 
 }

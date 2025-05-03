@@ -17,6 +17,11 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import es.uc3m.android.mobile_app.viewmodel.MyViewModel
 import com.google.firebase.firestore.DocumentId
+import androidx.compose.ui.layout.ContentScale // Import ContentScale
+import androidx.compose.ui.res.painterResource // Import painterResource
+import es.uc3m.android.mobile_app.R // Import your R class
+import coil.compose.AsyncImage // Import AsyncImage
+
 
 @Composable
 fun RestaurantDetailsScreen(
@@ -73,13 +78,13 @@ fun RestaurantDetailsScreen(
                     .height(200.dp)
                     .background(Color.LightGray)
             ) {
-                // In a real app, use an image loading library like Coil to load the image from the URL
-                // AsyncImage(
-                //   model = restaurant.imageUrl,
-                //   contentDescription = null,
-                //   modifier = Modifier.fillMaxSize(),
-                //   contentScale = ContentScale.Crop
-                // )
+
+                AsyncImage(
+                   model = restaurant.imageUrl,
+                   contentDescription = null,
+                   modifier = Modifier.fillMaxSize(),
+                   contentScale = ContentScale.Crop
+                )
             }
 
             // 2. Restaurant Title & Subtitle
@@ -94,22 +99,6 @@ fun RestaurantDetailsScreen(
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.padding(horizontal = 16.dp)
             )
-
-            // 3. Action Row (Add to itinerary + distance)
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Button(onClick = { /* Handle "Add to itinerary" */ }) {
-                    Text("Add to my itinerary")
-                }
-                Text(
-                    text = restaurant.distance,
-                    style = MaterialTheme.typography.bodyMedium
-                )
-            }
 
             // 4. Price Range Information
             Text(
@@ -154,15 +143,6 @@ fun RestaurantDetailsScreen(
                 }
             }
 
-            // 7. Button: "View Similar Nearby Restaurants"
-            Button(
-                onClick = { /* Navigate to similar restaurants screen */ },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp)
-            ) {
-                Text(text = "View Similar Nearby Restaurants")
-            }
         }
     } ?: run {
         // If somehow selectedRestaurant is still null but we're not loading
@@ -189,13 +169,12 @@ fun DishItem(dish: Dish, restaurantName: String, navController: NavHostControlle
                 .clip(RoundedCornerShape(8.dp))
                 .background(Color.Gray)
         ) {
-            // In a real app, use Coil or another image loading library:
-            // AsyncImage(
-            //   model = dish.imageUrl,
-            //   contentDescription = dish.name,
-            //   modifier = Modifier.fillMaxSize(),
-            //   contentScale = ContentScale.Crop
-            // )
+            AsyncImage(
+               model = dish.imageUrl,
+               contentDescription = dish.name,
+               modifier = Modifier.fillMaxSize(),
+               contentScale = ContentScale.Crop
+             )
         }
 
         Spacer(modifier = Modifier.width(16.dp))
@@ -269,5 +248,5 @@ data class Dish(
     val rating: Int = 0,
     val imageUrl: String = "",
     val price: Double = 0.0,
-    val isRecommended: Boolean? = false
+    val isRecommended: Boolean = true
 )
