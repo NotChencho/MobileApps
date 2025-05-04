@@ -76,6 +76,10 @@ import es.uc3m.android.mobile_app.viewmodel.AuthResult
 import es.uc3m.android.mobile_app.viewmodel.MyViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import es.uc3m.android.mobile_app.screens.PublicProfileScreen
+import es.uc3m.android.mobile_app.screens.UserListScreen
+
+
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -409,6 +413,27 @@ fun MyContent(
                 restaurantName = restaurantName,
                 dishName = dishName
             )
+        }
+
+        composable(
+            NavGraph.PublicProfile.route,
+            arguments = listOf(navArgument("email") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val email = backStackEntry.arguments?.getString("email") ?: "Unknown"
+            PublicProfileScreen(navController = navController, email = email)
+        }
+
+        composable(
+            route = "user_list/{title}/{emails}",
+            arguments = listOf(
+                navArgument("title") { type = NavType.StringType },
+                navArgument("emails") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val title = backStackEntry.arguments?.getString("title") ?: ""
+            val emailsString = backStackEntry.arguments?.getString("emails") ?: ""
+            val emailList = if (emailsString.isNotEmpty()) emailsString.split("|") else emptyList()
+            UserListScreen(navController, title, emailList)
         }
     }
 }

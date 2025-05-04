@@ -50,6 +50,7 @@ class MyViewModel : ViewModel() {
 
     private val auth: FirebaseAuth = FirebaseAuth.getInstance()
     private val db = FirebaseFirestore.getInstance()
+    private val followCollection = db.collection("follows") // <-- NUEVO
 
     // --- Authentication State ---
     private val _user = MutableStateFlow<FirebaseUser?>(null)
@@ -92,10 +93,8 @@ class MyViewModel : ViewModel() {
         _isUserLoggedIn.value = firebaseUser != null
         if (firebaseUser == null) {
             _authResult.value = AuthResult.Idle
-            // Clear user preferences when logged out
             _userPreferences.value = null
         } else {
-            // Load user preferences when logged in
             loadUserPreferences()
         }
     }
@@ -106,7 +105,7 @@ class MyViewModel : ViewModel() {
         _isUserLoggedIn.value = auth.currentUser != null
         if (_isUserLoggedIn.value) {
             loadUserPreferences()
-            loadReviews() // Make sure reviews are loaded when app starts
+            loadReviews()
         }
     }
 
@@ -115,7 +114,6 @@ class MyViewModel : ViewModel() {
         auth.removeAuthStateListener(authStateListener)
     }
 
-    // --- Login ---
     fun login(email: String, password: String) {
         viewModelScope.launch {
             _authResult.value = AuthResult.Loading
@@ -129,7 +127,6 @@ class MyViewModel : ViewModel() {
         }
     }
 
-    // --- Sign Up ---
     fun signUp(email: String, password: String) {
         viewModelScope.launch {
             _authResult.value = AuthResult.Loading
@@ -142,7 +139,6 @@ class MyViewModel : ViewModel() {
         }
     }
 
-    // --- Logout ---
     fun logout() {
         viewModelScope.launch {
             try {
@@ -153,12 +149,10 @@ class MyViewModel : ViewModel() {
         }
     }
 
-    // --- Reset Auth Result ---
     fun resetAuthResult() {
         _authResult.value = AuthResult.Idle
     }
 
-    // --- Load User Preferences ---
     fun loadUserPreferences() {
         val currentUser = auth.currentUser
         if (currentUser != null) {
@@ -170,11 +164,8 @@ class MyViewModel : ViewModel() {
                     if (document.exists()) {
                         val preferences = document.toObject(UserPreferences::class.java)
                         _userPreferences.value = preferences
-
-                        // Apply filters after loading preferences
                         applyFiltersToRestaurants()
                     } else {
-                        // No preferences found, set default values
                         _userPreferences.value = UserPreferences(
                             foodType = "Italian",
                             priceRange = "$",
@@ -190,7 +181,6 @@ class MyViewModel : ViewModel() {
         }
     }
 
-    // --- Save User Preferences ---
     fun saveUserPreferences(preferences: UserPreferences) {
         val currentUser = auth.currentUser
         if (currentUser != null) {
@@ -199,11 +189,8 @@ class MyViewModel : ViewModel() {
                 try {
                     val userId = currentUser.uid
                     db.collection("userPreferences").document(userId).set(preferences).await()
-
                     _userPreferences.value = preferences
                     _savePreferencesStatus.value = SaveStatus.Success
-
-                    // Apply filters after saving new preferences
                     applyFiltersToRestaurants()
                 } catch (e: Exception) {
                     _savePreferencesStatus.value = SaveStatus.Error(e.message ?: "Failed to save preferences")
@@ -214,7 +201,6 @@ class MyViewModel : ViewModel() {
         }
     }
 
-    // --- Load Reviews from Firestore ---
     fun loadReviews() {
         viewModelScope.launch {
             try {
@@ -235,7 +221,6 @@ class MyViewModel : ViewModel() {
         }
     }
 
-    // --- Load Restaurants from Firestore ---
     fun loadRestaurants() {
         viewModelScope.launch {
             _restaurants.value = DataState.Loading
@@ -250,8 +235,6 @@ class MyViewModel : ViewModel() {
                         snapshot?.let {
                             val restaurantList = parseRestaurantsFromFirestore(it)
                             _restaurants.value = DataState.Success(restaurantList)
-
-                            // Apply filters after loading restaurants
                             applyFiltersToRestaurants()
                         }
                     }
@@ -261,40 +244,28 @@ class MyViewModel : ViewModel() {
         }
     }
 
-    // --- Apply Filters to Restaurants ---
     private fun applyFiltersToRestaurants() {
         val currentRestaurants = _restaurants.value
         val preferences = _userPreferences.value
 
         if (currentRestaurants is DataState.Success && preferences != null) {
             val allRestaurants = currentRestaurants.data
-
-            // Apply filters based on preferences
             val filtered = allRestaurants.filter { restaurant ->
-                // Filter by food type (cuisine)
                 val matchesFoodType = restaurant.cuisine.equals(preferences.foodType, ignoreCase = true)
-
-                // Filter by price range
                 val matchesPriceRange = restaurant.priceRange.equals(preferences.priceRange, ignoreCase = true)
-
-                // Return restaurants that match both criteria
                 matchesFoodType && matchesPriceRange
             }
-
             _filteredRestaurants.value = DataState.Success(filtered)
         } else {
-            // If there are no preferences or restaurants, just pass through the original data
             _filteredRestaurants.value = currentRestaurants
         }
     }
 
-    // --- Get Restaurant by ID ---
     fun getRestaurantById(restaurantId: String) {
         viewModelScope.launch {
             try {
                 val documentSnapshot = db.collection("restaurants").document(restaurantId).get().await()
                 documentSnapshot?.let {
-                    // Convert Firestore document to Restaurant object
                     val restaurant = it.toObject(Restaurant::class.java)
                     _selectedRestaurant.value = restaurant
                 }
@@ -304,16 +275,13 @@ class MyViewModel : ViewModel() {
         }
     }
 
-    // --- Set Selected Restaurant ---
     fun setSelectedRestaurant(restaurant: Restaurant) {
         _selectedRestaurant.value = restaurant
     }
 
-    // --- Helper function to parse restaurant documents ---
     private fun parseRestaurantsFromFirestore(snapshot: QuerySnapshot): List<Restaurant> {
         return snapshot.documents.mapNotNull { doc ->
             try {
-                // Map the basic restaurant fields
                 val restaurant = doc.toObject(Restaurant::class.java) ?: return@mapNotNull null
                 restaurant
             } catch (e: Exception) {
@@ -323,21 +291,16 @@ class MyViewModel : ViewModel() {
         }
     }
 
-    // --- Add Dish Review ---
     fun addDishReview(review: Review, onSuccess: () -> Unit, onError: (String) -> Unit) {
         val currentUser = auth.currentUser
         if (currentUser != null) {
             viewModelScope.launch {
                 try {
-                    // Add review to Firestore
                     val reviewRef = db.collection("reviews").document()
                     reviewRef.set(review).await()
-
-                    // Update local state
                     val updatedReviews = _reviews.value.toMutableList()
                     updatedReviews.add(review.copy(id = reviewRef.id))
                     _reviews.value = updatedReviews
-
                     onSuccess()
                 } catch (e: Exception) {
                     onError(e.message ?: "Failed to add review")
@@ -348,34 +311,85 @@ class MyViewModel : ViewModel() {
         }
     }
 
-    // --- Get Reviews For Dish ---
     fun getReviewsForDish(restaurantName: String, dishName: String): List<Review> {
         return _reviews.value.filter {
             it.restaurant == restaurantName && it.dish == dishName
         }.sortedByDescending { it.timestamp }
     }
 
-    // --- Get User Reviews ---
     fun getUserReviews(): List<Review> {
         val userEmail = auth.currentUser?.email ?: return emptyList()
         return _reviews.value.filter { it.user == userEmail }
     }
 
-    // --- Delete Review ---
     fun deleteReview(reviewId: String, onSuccess: () -> Unit, onError: (String) -> Unit) {
         viewModelScope.launch {
             try {
                 db.collection("reviews").document(reviewId).delete().await()
-
-                // Update local state
                 val updatedReviews = _reviews.value.filter { it.id != reviewId }
                 _reviews.value = updatedReviews
-
                 onSuccess()
             } catch (e: Exception) {
                 onError(e.message ?: "Failed to delete review")
             }
         }
     }
-}
 
+    // --- FOLLOW SYSTEM ---
+    fun followUser(follower: String, followed: String) {
+        val followData = mapOf(
+            "follower" to follower,
+            "followed" to followed,
+            "timestamp" to System.currentTimeMillis()
+        )
+        followCollection.add(followData)
+            .addOnSuccessListener { println("Followed $followed") }
+            .addOnFailureListener { println("Error following user: ${it.message}") }
+    }
+
+    fun unfollowUser(follower: String, followed: String) {
+        followCollection
+            .whereEqualTo("follower", follower)
+            .whereEqualTo("followed", followed)
+            .get()
+            .addOnSuccessListener { snapshot ->
+                for (doc in snapshot.documents) {
+                    doc.reference.delete()
+                }
+            }
+            .addOnFailureListener { println("Error unfollowing user: ${it.message}") }
+    }
+
+    fun getFollowers(userEmail: String, callback: (List<String>) -> Unit) {
+        followCollection
+            .whereEqualTo("followed", userEmail)
+            .get()
+            .addOnSuccessListener { snapshot ->
+                val followers = snapshot.documents.mapNotNull { it.getString("follower") }
+                callback(followers)
+            }
+            .addOnFailureListener { println("Error fetching followers: ${it.message}") }
+    }
+
+    fun getFollowing(userEmail: String, callback: (List<String>) -> Unit) {
+        followCollection
+            .whereEqualTo("follower", userEmail)
+            .get()
+            .addOnSuccessListener { snapshot ->
+                val following = snapshot.documents.mapNotNull { it.getString("followed") }
+                callback(following)
+            }
+            .addOnFailureListener { println("Error fetching following: ${it.message}") }
+    }
+
+    fun isFollowing(follower: String, followed: String, callback: (Boolean) -> Unit) {
+        followCollection
+            .whereEqualTo("follower", follower)
+            .whereEqualTo("followed", followed)
+            .get()
+            .addOnSuccessListener { snapshot ->
+                callback(!snapshot.isEmpty)
+            }
+            .addOnFailureListener { println("Error checking following status: ${it.message}") }
+    }
+}

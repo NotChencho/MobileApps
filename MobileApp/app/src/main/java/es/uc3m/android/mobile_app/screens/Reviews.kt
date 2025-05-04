@@ -75,10 +75,16 @@ fun ReviewCard(review: Review, navController: NavHostController) {
                 )
 
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = review.user,
-                        style = MaterialTheme.typography.titleMedium
-                    )
+                    TextButton(
+                        onClick = {
+                            navController.navigate(NavGraph.PublicProfile.createRoute(review.user))
+                        }
+                    ) {
+                        Text(
+                            text = review.user,
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                    }
 
                     // Format timestamp
                     val formatter = SimpleDateFormat("MMM d, yyyy", Locale.getDefault())

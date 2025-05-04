@@ -3,6 +3,8 @@ package es.uc3m.android.mobile_app
 import androidx.navigation.NamedNavArgument
 import androidx.navigation.NavType
 import androidx.navigation.navArgument
+import android.net.Uri
+
 
 const val EXPLORE_ROUTE = "explore"
 const val REVIEWS_ROUTE = "reviews"
@@ -15,6 +17,7 @@ const val PROFILE_ROUTE = "profile"
 const val RESTAURANTS_ROUTE = "restaurants"
 const val DISH_REVIEW_ROUTE = "dish_review"
 const val DISH_REVIEWS_LIST_ROUTE = "dish_reviews_list"
+const val PUBLIC_PROFILE_ROUTE = "public_profile"
 
 sealed class NavGraph(val route: String, val arguments: List<NamedNavArgument> = emptyList()) {
 
@@ -24,6 +27,7 @@ sealed class NavGraph(val route: String, val arguments: List<NamedNavArgument> =
 
     data object Login : NavGraph(LOGIN_ROUTE)
     data object SignUp : NavGraph(SIGNUP_ROUTE)
+    data object Profile : NavGraph("profile")
 
     data object Settings : NavGraph("$SETTINGS_ROUTE/{source}",
         arguments = listOf(navArgument("source") { type = NavType.StringType })
@@ -89,5 +93,15 @@ sealed class NavGraph(val route: String, val arguments: List<NamedNavArgument> =
             "$DISH_REVIEWS_LIST_ROUTE/$restaurantName/$dishName"
     }
 
-    data object Profile : NavGraph(PROFILE_ROUTE)
+    data object PublicProfile : NavGraph("public_profile/{email}") {
+        fun createRoute(email: String): String = "public_profile/$email"
+    }
+
+    data object UserList : NavGraph("user_list/{title}/{emails}") {
+        fun createRoute(title: String, emails: List<String>): String {
+            val joined = emails.joinToString("|")
+            return "user_list/$title/$joined"
+        }
+    }
+
 }

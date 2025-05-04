@@ -20,6 +20,11 @@ import es.uc3m.android.mobile_app.viewmodel.MyViewModel
 import es.uc3m.android.mobile_app.viewmodel.Review
 import java.text.SimpleDateFormat
 import java.util.*
+import androidx.compose.foundation.clickable
+import androidx.compose.material3.MaterialTheme
+import es.uc3m.android.mobile_app.NavGraph
+import android.net.Uri
+
 
 @Composable
 fun MyProfileScreen(
@@ -37,6 +42,19 @@ fun MyProfileScreen(
 
     // Filter reviews only for the current user
     val userEmail = user?.email ?: "Unknown"
+
+    val followersCount = remember { mutableStateOf(0) }
+    val followingCount = remember { mutableStateOf(0) }
+
+    LaunchedEffect(userEmail) {
+        viewModel.getFollowers(userEmail) { list ->
+            followersCount.value = list.size
+        }
+        viewModel.getFollowing(userEmail) { list ->
+            followingCount.value = list.size
+        }
+    }
+
     val userReviews = allReviews.filter { it.user == userEmail }
         .sortedByDescending { it.timestamp }
 
@@ -62,6 +80,34 @@ fun MyProfileScreen(
             style = MaterialTheme.typography.titleMedium,
             modifier = Modifier.padding(bottom = 8.dp)
         )
+
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(bottom = 8.dp)
+        ) {
+            Text(
+                text = "Followers: ${followersCount.value}",
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.clickable {
+                    viewModel.getFollowers(userEmail) { list: List<String> ->
+                        val route = NavGraph.UserList.createRoute("Followers", list)
+                        navController.navigate(route)
+                    }
+                }
+            )
+
+            Text(
+                text = "Following: ${followingCount.value}",
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.clickable {
+                    viewModel.getFollowing(userEmail) { list: List<String> ->
+                        val route = NavGraph.UserList.createRoute("Following", list)
+                        navController.navigate(route)
+                    }
+                }
+            )
+        }
 
         // Logout Button
         Button(
