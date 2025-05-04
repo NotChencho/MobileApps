@@ -1,32 +1,59 @@
 package es.uc3m.android.mobile_app
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
+import coil.compose.rememberAsyncImagePainter
 import es.uc3m.android.mobile_app.viewmodel.MyViewModel
 import es.uc3m.android.mobile_app.viewmodel.Review
+import java.io.File
+import java.text.SimpleDateFormat
+import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DishReviewScreen(
     navController: NavHostController,
     viewModel: MyViewModel = viewModel(),
-    restaurantId: String = "", // Make it optional with default empty string
+    restaurantId: String = "",
     restaurantName: String,
     dishName: String
 ) {
+    val context = LocalContext.current
     val user by viewModel.user.collectAsState()
     val userEmail = user?.email ?: "Unknown"
 
@@ -37,142 +64,373 @@ fun DishReviewScreen(
     var submitError by remember { mutableStateOf<String?>(null) }
     var submitSuccess by remember { mutableStateOf(false) }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(
-            text = "Review for $dishName",
-            style = MaterialTheme.typography.headlineSmall,
-            modifier = Modifier.padding(bottom = 24.dp)
-        )
+    // Image handling states
+    var imageUri by remember { mutableStateOf<Uri?>(null) }
+    var showImageOptions by remember { mutableStateOf(false) }
 
-        Text(
-            text = "at $restaurantName",
-            style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.padding(bottom = 32.dp)
-        )
+    // Generate a timestamp-based filename for temporary photo file
+    val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+    val photoFile = File.createTempFile(
+        "JPEG_${timeStamp}_",
+        ".jpg",
+        context.cacheDir
+    )
+    val photoUri = FileProvider.getUriForFile(
+        context,
+        "${context.packageName}.provider",
+        photoFile
+    )
 
-        // Title input
-        OutlinedTextField(
-            value = title,
-            onValueChange = { title = it },
-            label = { Text("Review Title") },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 16.dp),
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next)
-        )
+    // Permission request state
+    var shouldShowPermissionRationale by remember { mutableStateOf(false) }
 
-        // Rating selector
-        Text(
-            text = "Rating",
-            style = MaterialTheme.typography.bodyLarge,
-            modifier = Modifier
-                .align(Alignment.Start)
-                .padding(bottom = 8.dp)
-        )
-
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 16.dp),
-            horizontalArrangement = Arrangement.Start
-        ) {
-            repeat(5) { index ->
-                IconButton(onClick = { rating = index + 1 }) {
-                    Icon(
-                        imageVector = if (index < rating) Icons.Filled.Star else Icons.Filled.StarBorder,
-                        contentDescription = "Star ${index + 1}",
-                        tint = if (index < rating) Color(0xFFFFC107) else Color.Gray
-                    )
-                }
-            }
-        }
-
-        // Comment input
-        OutlinedTextField(
-            value = comment,
-            onValueChange = { comment = it },
-            label = { Text("Your Review") },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(150.dp)
-                .padding(bottom = 24.dp),
-            maxLines = 5
-        )
-
-        // Submit button
-        Button(
-            onClick = {
-                if (rating == 0) {
-                    submitError = "Please select a rating"
-                    return@Button
-                }
-
-                if (title.isBlank()) {
-                    submitError = "Please enter a title for your review"
-                    return@Button
-                }
-
-                isSubmitting = true
-                submitError = null
-
-                val review = Review(
-                    user = userEmail,
-                    restaurant = restaurantName,
-                    dish = dishName,
-                    rating = rating,
-                    comment = comment,
-                    title = title
-                )
-
-                viewModel.addDishReview(review, onSuccess = {
-                    isSubmitting = false
-                    submitSuccess = true
-                    // Navigate back after short delay
-                    navController.popBackStack()
-                }, onError = { error ->
-                    isSubmitting = false
-                    submitError = error
-                })
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 16.dp),
-            enabled = !isSubmitting
-        ) {
-            if (isSubmitting) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(24.dp),
-                    color = Color.White
-                )
-            } else {
-                Text("Submit Review")
-            }
-        }
-
-        // Error message
-        submitError?.let {
-            Text(
-                text = it,
-                color = MaterialTheme.colorScheme.error,
-                style = MaterialTheme.typography.bodyMedium,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.padding(top = 8.dp)
+    val photoPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let {
+            // Create a copy of the selected image in app's cache directory
+            // This ensures we have direct file access
+            val inputStream = context.contentResolver.openInputStream(it)
+            val tempFile = File.createTempFile(
+                "JPEG_${timeStamp}_",
+                ".jpg",
+                context.cacheDir
             )
+            inputStream?.use { input ->
+                tempFile.outputStream().use { output ->
+                    input.copyTo(output)
+                }
+            }
+            imageUri = Uri.fromFile(tempFile)
         }
+    }
 
-        // Cancel button
-        OutlinedButton(
-            onClick = { navController.popBackStack() },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 8.dp)
-        ) {
-            Text("Cancel")
+    // Camera launcher
+    val cameraLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicture()
+    ) { success ->
+        if (success) {
+            imageUri = photoUri
         }
+    }
+
+    // Camera permission launcher
+    val cameraPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            cameraLauncher.launch(photoUri)
+        } else {
+            shouldShowPermissionRationale = true
+        }
+    }
+
+    // Remember scroll state
+    val scrollState = rememberScrollState()
+
+    Box(
+        modifier = Modifier.fillMaxSize()
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 24.dp)
+                .verticalScroll(scrollState), // Add scrolling capability
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Text(
+                text = "Review for $dishName",
+                style = MaterialTheme.typography.headlineSmall,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+
+            Text(
+                text = "at $restaurantName",
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.padding(bottom = 16.dp)
+            )
+
+            // Title input
+            OutlinedTextField(
+                value = title,
+                onValueChange = { title = it },
+                label = { Text("Review Title") },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 16.dp),
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next)
+            )
+
+            // Rating selector
+            Text(
+                text = "Rating",
+                style = MaterialTheme.typography.bodyLarge,
+                modifier = Modifier
+                    .align(Alignment.Start)
+                    .padding(bottom = 8.dp)
+            )
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 16.dp),
+                horizontalArrangement = Arrangement.Start
+            ) {
+                repeat(5) { index ->
+                    IconButton(onClick = { rating = index + 1 }) {
+                        Icon(
+                            imageVector = if (index < rating) Icons.Filled.Star else Icons.Filled.StarBorder,
+                            contentDescription = "Star ${index + 1}",
+                            tint = if (index < rating) Color(0xFFFFC107) else Color.Gray
+                        )
+                    }
+                }
+            }
+
+            // Photo section
+            Text(
+                text = "Add Photo (Optional)",
+                style = MaterialTheme.typography.bodyLarge,
+                modifier = Modifier
+                    .align(Alignment.Start)
+                    .padding(bottom = 8.dp)
+            )
+
+            // Image preview or placeholder
+            if (imageUri != null) {
+                // Display the selected image
+                Box(
+                    modifier = Modifier
+                        .size(200.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .border(1.dp, Color.Gray, RoundedCornerShape(8.dp))
+                ) {
+                    Image(
+                        painter = rememberAsyncImagePainter(imageUri),
+                        contentDescription = "Selected Image",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+
+                    // Remove photo button
+                    IconButton(
+                        onClick = { imageUri = null },
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(4.dp)
+                            .size(24.dp)
+                            .background(
+                                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f),
+                                shape = CircleShape
+                            )
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Remove Photo",
+                            tint = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
+            } else {
+                // Image selection placeholder
+                Box(
+                    modifier = Modifier
+                        .size(200.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .border(1.dp, Color.Gray, RoundedCornerShape(8.dp))
+                        .clickable { showImageOptions = true },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Add,
+                            contentDescription = "Add Photo",
+                            modifier = Modifier.size(48.dp),
+                            tint = Color.Gray
+                        )
+                        Text(
+                            text = "Add Photo",
+                            color = Color.Gray,
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Comment input
+            OutlinedTextField(
+                value = comment,
+                onValueChange = { comment = it },
+                label = { Text("Your Review") },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(120.dp)
+                    .padding(bottom = 16.dp),
+                maxLines = 5
+            )
+
+            // Submit button
+            Button(
+                onClick = {
+                    if (rating == 0) {
+                        submitError = "Please select a rating"
+                        return@Button
+                    }
+
+                    if (title.isBlank()) {
+                        submitError = "Please enter a title for your review"
+                        return@Button
+                    }
+
+                    isSubmitting = true
+                    submitError = null
+
+                    val review = Review(
+                        user = userEmail,
+                        restaurant = restaurantName,
+                        dish = dishName,
+                        rating = rating,
+                        comment = comment,
+                        title = title,
+                        photoUrl = "", // This will be filled by the ViewModel
+                        timestamp = System.currentTimeMillis()
+
+                    )
+
+                    // Show loading state
+                    viewModel.addDishReview(
+                        review = review,
+                        imageUri = imageUri,
+                        onSuccess = {
+                            isSubmitting = false
+                            submitSuccess = true
+                            // Navigate back after short delay
+                            navController.popBackStack()
+                        },
+                        onError = { error ->
+                            isSubmitting = false
+                            submitError = "Error: $error. Please try again."
+                        }
+                    )
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 16.dp),
+                enabled = !isSubmitting
+            ) {
+                if (isSubmitting) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        color = Color.White
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Submitting...")
+                } else {
+                    Text("Submit Review")
+                }
+            }
+
+            // Error message
+            submitError?.let {
+                Text(
+                    text = it,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodyMedium,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(top = 8.dp)
+                )
+            }
+
+            // Cancel button
+            OutlinedButton(
+                onClick = { navController.popBackStack() },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp)
+            ) {
+                Text("Cancel")
+            }
+
+            // Add extra space at the bottom for comfortable scrolling
+            Spacer(modifier = Modifier.height(32.dp))
+        }
+    }
+
+    // Dialogs remain outside the scrollable area
+
+    // Image source dialog
+    if (showImageOptions) {
+        AlertDialog(
+            onDismissRequest = { showImageOptions = false },
+            title = { Text("Add Photo") },
+            text = { Text("Choose a photo source") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showImageOptions = false
+                        photoPickerLauncher.launch("image/*")
+                    }
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.Image,
+                            contentDescription = "Gallery",
+                            modifier = Modifier.padding(end = 8.dp)
+                        )
+                        Text("Gallery")
+                    }
+                }
+            },
+            dismissButton = {
+                Button(
+                    onClick = {
+                        showImageOptions = false
+                        // Check camera permission
+                        when {
+                            ContextCompat.checkSelfPermission(
+                                context,
+                                Manifest.permission.CAMERA
+                            ) == PackageManager.PERMISSION_GRANTED -> {
+                                cameraLauncher.launch(photoUri)
+                            }
+                            else -> {
+                                cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+                            }
+                        }
+                    }
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.CameraAlt,
+                            contentDescription = "Camera",
+                            modifier = Modifier.padding(end = 8.dp)
+                        )
+                        Text("Camera")
+                    }
+                }
+            }
+        )
+    }
+
+    // Permission rationale dialog
+    if (shouldShowPermissionRationale) {
+        AlertDialog(
+            onDismissRequest = { shouldShowPermissionRationale = false },
+            title = { Text("Camera Permission") },
+            text = { Text("Camera permission is needed to take photos. Please grant the permission in app settings.") },
+            confirmButton = {
+                Button(onClick = { shouldShowPermissionRationale = false }) {
+                    Text("OK")
+                }
+            }
+        )
     }
 }

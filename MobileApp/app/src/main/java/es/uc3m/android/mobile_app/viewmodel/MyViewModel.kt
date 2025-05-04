@@ -13,6 +13,9 @@ import kotlinx.coroutines.tasks.await
 import es.uc3m.android.mobile_app.screens.Restaurant
 import es.uc3m.android.mobile_app.screens.GeoPoint
 import es.uc3m.android.mobile_app.screens.Dish
+import android.net.Uri
+import com.google.firebase.storage.FirebaseStorage
+import java.util.UUID
 
 // --- Auth Result Sealed Class ---
 sealed class AuthResult {
@@ -291,16 +294,38 @@ class MyViewModel : ViewModel() {
         }
     }
 
-    fun addDishReview(review: Review, onSuccess: () -> Unit, onError: (String) -> Unit) {
+    fun addDishReview(review: Review, imageUri: Uri? = null, onSuccess: () -> Unit, onError: (String) -> Unit) {
         val currentUser = auth.currentUser
         if (currentUser != null) {
             viewModelScope.launch {
                 try {
+                    // If there's an image to upload
+                    val finalReview = if (imageUri != null) {
+                        try {
+                            // Upload image to Firebase Storage first
+                            val photoUrl = uploadImageToFirebaseStorage(imageUri)
+                            // Create a new review with the photo URL
+                            review.copy(photoUrl = photoUrl)
+                        } catch (e: Exception) {
+                            // Handle image upload failure but still proceed with the review
+                            println("Image upload failed: ${e.message}")
+                            // Continue with review without image
+                            review.copy(photoUrl = "")
+                        }
+                    } else {
+                        // No image to upload
+                        review
+                    }
+
+                    // Save the review to Firestore
                     val reviewRef = db.collection("reviews").document()
-                    reviewRef.set(review).await()
+                    reviewRef.set(finalReview).await()
+
+                    // Update local state
                     val updatedReviews = _reviews.value.toMutableList()
-                    updatedReviews.add(review.copy(id = reviewRef.id))
+                    updatedReviews.add(finalReview.copy(id = reviewRef.id))
                     _reviews.value = updatedReviews
+
                     onSuccess()
                 } catch (e: Exception) {
                     onError(e.message ?: "Failed to add review")
@@ -308,6 +333,32 @@ class MyViewModel : ViewModel() {
             }
         } else {
             onError("User not logged in")
+        }
+    }
+
+    // Updated image upload method
+    private suspend fun uploadImageToFirebaseStorage(imageUri: Uri): String {
+        return try {
+            val storageRef = FirebaseStorage.getInstance().reference
+            // Simpler path structure
+            val imageName = "images/${UUID.randomUUID()}.jpg"
+            val imageRef = storageRef.child(imageName)
+
+            // Log before starting upload
+            println("Starting upload to path: $imageName")
+
+            // Upload the file
+            val uploadTask = imageRef.putFile(imageUri).await()
+            println("Upload completed successfully")
+
+            // Get the download URL
+            val downloadUrl = imageRef.downloadUrl.await()
+            println("Download URL obtained: ${downloadUrl.toString()}")
+
+            downloadUrl.toString()
+        } catch (e: Exception) {
+            println("Upload error details: ${e.stackTraceToString()}")
+            throw Exception("Failed to upload image: ${e.message}")
         }
     }
 

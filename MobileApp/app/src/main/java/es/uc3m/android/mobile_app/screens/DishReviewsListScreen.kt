@@ -1,22 +1,31 @@
 package es.uc3m.android.mobile_app
 
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
+import coil.compose.rememberAsyncImagePainter
 import es.uc3m.android.mobile_app.viewmodel.MyViewModel
+import es.uc3m.android.mobile_app.viewmodel.Review
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -27,6 +36,9 @@ fun DishReviewsListScreen(
     restaurantName: String,
     dishName: String
 ) {
+    // State for fullscreen image dialog
+    var selectedImageUrl by remember { mutableStateOf<String?>(null) }
+
     // Make sure reviews are loaded
     LaunchedEffect(Unit) {
         viewModel.loadReviews()
@@ -60,7 +72,6 @@ fun DishReviewsListScreen(
         // Add a review button
         Button(
             onClick = {
-                // Get restaurant ID if possible - using empty string as fallback
                 navController.navigate("dish_review//${restaurantName}/${dishName}")
             },
             modifier = Modifier
@@ -91,82 +102,150 @@ fun DishReviewsListScreen(
                     .weight(1f)
             ) {
                 items(dishReviews) { review ->
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 8.dp),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(16.dp)
-                        ) {
-                            // Review header with user and date
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                // User info
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(
-                                        imageVector = Icons.Filled.Person,
-                                        contentDescription = "User",
-                                        modifier = Modifier.size(24.dp),
-                                        tint = Color.Gray
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text(
-                                        text = review.user.substringBefore('@'),
-                                        style = MaterialTheme.typography.titleMedium
-                                    )
-                                }
-
-                                // Format timestamp
-                                val formatter = SimpleDateFormat("MMM d, yyyy", Locale.getDefault())
-                                val dateString = formatter.format(Date(review.timestamp))
-
-                                Text(
-                                    text = dateString,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = Color.Gray
-                                )
-                            }
-
-                            Spacer(modifier = Modifier.height(8.dp))
-
-                            // Rating
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                repeat(review.rating) {
-                                    Icon(
-                                        imageVector = Icons.Filled.Star,
-                                        contentDescription = "Star",
-                                        tint = Color(0xFFFFC107),
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                }
-
-                                Spacer(modifier = Modifier.width(8.dp))
-
-                                Text(
-                                    text = review.title,
-                                    style = MaterialTheme.typography.titleSmall,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                            }
-
-                            Spacer(modifier = Modifier.height(8.dp))
-
-                            // Review comment
-                            Text(
-                                text = review.comment,
-                                style = MaterialTheme.typography.bodyMedium
-                            )
+                    ReviewCard(
+                        review = review,
+                        onImageClick = { imageUrl ->
+                            selectedImageUrl = imageUrl
                         }
-                    }
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
                 }
+            }
+        }
+    }
+
+    // Fullscreen image dialog
+    if (selectedImageUrl != null) {
+        Dialog(
+            onDismissRequest = { selectedImageUrl = null }
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(1f)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(Color.Black)
+            ) {
+                Image(
+                    painter = rememberAsyncImagePainter(selectedImageUrl),
+                    contentDescription = "Dish Photo",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Fit
+                )
+
+                IconButton(
+                    onClick = { selectedImageUrl = null },
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(8.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Close",
+                        tint = Color.White
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun ReviewCard(
+    review: Review,
+    onImageClick: (String) -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            // Review header with user and date
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // User info
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Filled.Person,
+                        contentDescription = "User",
+                        modifier = Modifier.size(24.dp),
+                        tint = Color.Gray
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = review.user.substringBefore('@'),
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                }
+
+                // Format timestamp
+                val formatter = SimpleDateFormat("MMM d, yyyy", Locale.getDefault())
+                val dateString = formatter.format(Date(review.timestamp))
+
+                Text(
+                    text = dateString,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.Gray
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Rating and title
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                repeat(review.rating) {
+                    Icon(
+                        imageVector = Icons.Filled.Star,
+                        contentDescription = "Star",
+                        tint = Color(0xFFFFC107),
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                Text(
+                    text = review.title,
+                    style = MaterialTheme.typography.titleSmall,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Review comment
+            Text(
+                text = review.comment,
+                style = MaterialTheme.typography.bodyMedium
+            )
+
+            if (!review.photoUrl.isNullOrEmpty()) {
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Add debug logging
+                println("Loading photo from URL: ${review.photoUrl}")
+
+                Image(
+                    painter = rememberAsyncImagePainter(review.photoUrl),
+                    contentDescription = "Food Photo",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(200.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .clickable { onImageClick(review.photoUrl.toString()) },
+                    contentScale = ContentScale.Crop
+                )
+
             }
         }
     }

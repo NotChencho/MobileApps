@@ -10,5 +10,6 @@ data class Review(
     val rating: Int = 0,
     val comment: String = "",
     val title: String = "", // Added title field
-    val timestamp: Long = System.currentTimeMillis() // For sorting reviews by recency
+    val timestamp: Long = System.currentTimeMillis(), // For sorting reviews by recency
+    val photoUrl: String? = null // URL to the uploaded photo in Firebase Storage
 )
