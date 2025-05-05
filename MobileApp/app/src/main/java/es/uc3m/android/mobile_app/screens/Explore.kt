@@ -32,6 +32,10 @@ import es.uc3m.android.mobile_app.viewmodel.UserPreferences
 import androidx.compose.ui.layout.ContentScale // Import ContentScale
 import androidx.compose.ui.res.painterResource // Import painterResource
 import coil.compose.AsyncImage // Import AsyncImage
+import androidx.compose.ui.platform.LocalContext
+import es.uc3m.android.mobile_app.viewmodel.Review
+import androidx.compose.ui.Modifier
+
 
 @Composable
 fun ExploreScreen(
@@ -42,6 +46,7 @@ fun ExploreScreen(
     LaunchedEffect(Unit) {
         viewModel.loadRestaurants()
         viewModel.loadUserPreferences()
+        viewModel.getLatestReviewsFromFollowing()
     }
 
     // Observe restaurants state (filtered ones)
@@ -279,73 +284,55 @@ fun RestaurantItem(
     }
 }
 
-
-
-// Composable that provides the CONTENT for the Friends Activity section
 @Composable
-fun FriendsActivitySectionContent(navController: NavHostController) {
-    val friendsActivity = listOf(
-        "David" to "Restaurant 1",
-        "Ana" to "Restaurant 2",
-        "Mario" to "Restaurant 3",
-        // Add more friends here to test scrolling
-        "Carlos" to "Restaurant 4",
-        "Elena" to "Restaurant 5",
-        "Sergio" to "Restaurant 6",
-        "Laura" to "Restaurant 7",
-        "Javier" to "Restaurant 8",
-        "Sofia" to "Restaurant 9",
-        "Diego" to "Restaurant 10",
-        "Isabel" to "Restaurant 11",
-        "Miguel" to "Restaurant 12",
-        "Carmen" to "Restaurant 13",
-        "Pablo" to "Restaurant 14",
-        "Lucia" to "Restaurant 15"
-    )
+fun FriendsActivitySectionContent(
+    navController: NavHostController,
+    viewModel: MyViewModel = viewModel()
+) {
+    val recentFriendReviews by viewModel.recentReviewsFromFollowed.collectAsState()
 
-    // This Column contains the title and the scrollable list.
-    // It does NOT have a weight modifier here. Its size is determined by the parent Column in ExploreScreen.
-    Column(modifier = Modifier.fillMaxSize()) { // Fill the space given by the parent weighted Column
-        // Title
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+    ) {
         Text(
-            text = "Friends Recent Activity",
-            style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+            text = "Recent Friend Activity",
+            style = MaterialTheme.typography.titleMedium
         )
+        Spacer(modifier = Modifier.height(8.dp))
 
-        // LazyColumn for a scrollable list within this section
-        LazyColumn(
-            modifier = Modifier.fillMaxSize() // Fill the remaining space in THIS Column
-        ) {
-            items(friendsActivity) { (friendName, restaurantName) ->
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable {
-                            // Example navigation - ideally use a specific restaurant ID
-                            navController.navigate(NavGraph.RestaurantDetails.createRoute("s8ZtXxCwTlwKCt8Za1JL"))
-                        }
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
-                ) {
-                    Surface(
+        if (recentFriendReviews.isEmpty()) {
+            Text(text = "No recent activity from followed users.")
+        } else {
+            LazyColumn {
+                items(recentFriendReviews) { review ->
+                    Card(
                         modifier = Modifier
-                            .size(40.dp)
-                            .clip(RoundedCornerShape(50)),
-                        color = Color.LightGray
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp)
+                            .clickable {
+                                navController.navigate("public_profile/${review.user}")
+                            },
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer
+                        )
                     ) {
-                        // Could place an Icon or initial inside
-                    }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Column {
-                        Text(text = friendName, style = MaterialTheme.typography.bodyLarge)
-                        Text(text = restaurantName, style = MaterialTheme.typography.bodyMedium)
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Text(text = "${review.user} reviewed ${review.dish} at ${review.restaurant}")
+                            Text(
+                                text = review.comment,
+                                style = MaterialTheme.typography.bodySmall,
+                                overflow = TextOverflow.Ellipsis,
+                                maxLines = 2
+                            )
+                        }
                     }
                 }
             }
         }
     }
 }
-
 
 @Preview(showBackground = true)
 @Composable

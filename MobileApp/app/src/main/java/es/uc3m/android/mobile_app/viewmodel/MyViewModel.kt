@@ -44,8 +44,8 @@ sealed class SaveStatus {
 data class UserPreferences(
     val foodType: String = "",
     val priceRange: String = "",
-    val allergyPreference: String = "",
-    val otherPreference: String = "",
+    val allergyPreferences: List<String> = emptyList(),
+    val otherPreferences: List<String> = emptyList(),
     val date: String = ""
 )
 
@@ -54,6 +54,8 @@ class MyViewModel : ViewModel() {
     private val auth: FirebaseAuth = FirebaseAuth.getInstance()
     private val db = FirebaseFirestore.getInstance()
     private val followCollection = db.collection("follows") // <-- NUEVO
+    private val _recentReviewsFromFollowed = MutableStateFlow<List<Review>>(emptyList())
+    val recentReviewsFromFollowed: StateFlow<List<Review>> = _recentReviewsFromFollowed
 
     // --- Authentication State ---
     private val _user = MutableStateFlow<FirebaseUser?>(null)
@@ -106,9 +108,11 @@ class MyViewModel : ViewModel() {
         auth.addAuthStateListener(authStateListener)
         _user.value = auth.currentUser
         _isUserLoggedIn.value = auth.currentUser != null
+
         if (_isUserLoggedIn.value) {
             loadUserPreferences()
             loadReviews()
+            getLatestReviewsFromFollowing()
         }
     }
 
@@ -172,8 +176,8 @@ class MyViewModel : ViewModel() {
                         _userPreferences.value = UserPreferences(
                             foodType = "Italian",
                             priceRange = "$",
-                            allergyPreference = "None",
-                            otherPreference = "Outdoor Seating",
+                            allergyPreferences = listOf("None"),
+                            otherPreferences = listOf("Outdoor Seating"),
                             date = ""
                         )
                     }
@@ -217,6 +221,7 @@ class MyViewModel : ViewModel() {
                             doc.toObject(Review::class.java)?.apply { id = doc.id }
                         }
                         _reviews.value = reviewList
+                        getLatestReviewsFromFollowing()
                     }
             } catch (e: Exception) {
                 println("Exception: ${e.message}")
@@ -252,12 +257,23 @@ class MyViewModel : ViewModel() {
         val preferences = _userPreferences.value
 
         if (currentRestaurants is DataState.Success && preferences != null) {
-            val allRestaurants = currentRestaurants.data
-            val filtered = allRestaurants.filter { restaurant ->
+            val filtered = currentRestaurants.data.filter { restaurant ->
                 val matchesFoodType = restaurant.cuisine.equals(preferences.foodType, ignoreCase = true)
                 val matchesPriceRange = restaurant.priceRange.equals(preferences.priceRange, ignoreCase = true)
-                matchesFoodType && matchesPriceRange
+
+                val matchesAllergy = preferences.allergyPreferences.isEmpty() ||
+                        restaurant.Allergies?.any { allergy ->
+                            preferences.allergyPreferences.any { it.equals(allergy, ignoreCase = true) }
+                        } == true
+
+                val matchesOther = preferences.otherPreferences.isEmpty() ||
+                        restaurant.Other?.any { other ->
+                            preferences.otherPreferences.any { it.equals(other, ignoreCase = true) }
+                        } == true
+
+                matchesFoodType && matchesPriceRange && matchesAllergy && matchesOther
             }
+
             _filteredRestaurants.value = DataState.Success(filtered)
         } else {
             _filteredRestaurants.value = currentRestaurants
@@ -443,4 +459,21 @@ class MyViewModel : ViewModel() {
             }
             .addOnFailureListener { println("Error checking following status: ${it.message}") }
     }
+
+    fun getLatestReviewsFromFollowing() {
+        val currentUserEmail = auth.currentUser?.email ?: return
+        getFollowing(currentUserEmail) { followingList ->
+            val allReviews = _reviews.value
+
+            val latestReviews = followingList.mapNotNull { followedUser ->
+                allReviews
+                    .filter { it.user == followedUser }
+                    .maxByOrNull { it.timestamp }
+            }
+
+            _recentReviewsFromFollowed.value = latestReviews
+        }
+    }
 }
+
+

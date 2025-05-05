@@ -235,7 +235,9 @@ data class Restaurant(
     val location: GeoPoint = GeoPoint(0.0, 0.0),
     val distance: String = "",
     val rating: Double = 0.0,
-    val dishes: List<Dish> = emptyList()
+    val dishes: List<Dish> = emptyList(),
+    val Allergies: List<String>? = null,
+    val Other: List<String>? = null
 )
 
 data class GeoPoint(

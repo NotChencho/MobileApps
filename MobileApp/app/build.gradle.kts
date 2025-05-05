@@ -68,5 +68,5 @@ dependencies {
     implementation(libs.androidx.runtime.livedata)
     implementation("io.coil-kt:coil-compose:2.6.0") // Use the latest version of Coil
     implementation("com.google.firebase:firebase-storage")
-
+    implementation("androidx.compose.foundation:foundation-layout:1.5.0")
 }
