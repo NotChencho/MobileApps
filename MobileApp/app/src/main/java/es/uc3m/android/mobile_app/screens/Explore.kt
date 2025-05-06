@@ -68,7 +68,7 @@ fun ExploreScreen(
                 .clip(RoundedCornerShape(24.dp))
                 .background(Color.LightGray)
         ) {
-            GoogleMapWidget(allRestaurantsState)
+            GoogleMapWidget(filteredRestaurantsState)
         }
 
         // Active filters display
@@ -319,13 +319,38 @@ fun FriendsActivitySectionContent(
                         )
                     ) {
                         Column(modifier = Modifier.padding(12.dp)) {
-                            Text(text = "${review.user} reviewed ${review.dish} at ${review.restaurant}")
-                            Text(
-                                text = review.comment,
-                                style = MaterialTheme.typography.bodySmall,
-                                overflow = TextOverflow.Ellipsis,
-                                maxLines = 2
-                            )
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                // Review photo display
+                                if (!review.photoUrl.isNullOrEmpty()) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(60.dp)
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .background(Color.LightGray)
+                                    ) {
+                                        AsyncImage(
+                                            model = review.photoUrl,
+                                            contentDescription = "Review photo",
+                                            modifier = Modifier.fillMaxSize(),
+                                            contentScale = ContentScale.Crop
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                }
+
+                                Column {
+                                    Text(text = "${review.user} reviewed ${review.dish} at ${review.restaurant}")
+                                    Text(
+                                        text = review.comment,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        overflow = TextOverflow.Ellipsis,
+                                        maxLines = 2
+                                    )
+                                }
+                            }
                         }
                     }
                 }

@@ -24,6 +24,11 @@ import androidx.compose.foundation.clickable
 import androidx.compose.material3.MaterialTheme
 import es.uc3m.android.mobile_app.NavGraph
 import android.net.Uri
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import coil.compose.AsyncImage
 
 
 @Composable
@@ -212,6 +217,25 @@ fun ReviewItemCard(
         Column(
             modifier = Modifier.padding(16.dp)
         ) {
+            // Display photo if available
+            if (!review.photoUrl.isNullOrEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(180.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(Color.LightGray)
+                ) {
+                    AsyncImage(
+                        model = review.photoUrl,
+                        contentDescription = "Review photo of ${review.dish}",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                }
+                Spacer(modifier = Modifier.height(12.dp))
+            }
+
             // Restaurant and dish info
             Text(
                 text = "${review.dish} at ${review.restaurant}",

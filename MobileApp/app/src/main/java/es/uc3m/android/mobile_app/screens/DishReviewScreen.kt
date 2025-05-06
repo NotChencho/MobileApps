@@ -1,8 +1,9 @@
 package es.uc3m.android.mobile_app
 
 import android.Manifest
-import android.content.pm.PackageManager
+import android.content.Intent
 import android.net.Uri
+import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
@@ -33,11 +34,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import coil.compose.rememberAsyncImagePainter
+import es.uc3m.android.mobile_app.PermissionHandler
 import es.uc3m.android.mobile_app.viewmodel.MyViewModel
 import es.uc3m.android.mobile_app.viewmodel.Review
 import java.io.File
@@ -68,6 +69,12 @@ fun DishReviewScreen(
     var imageUri by remember { mutableStateOf<Uri?>(null) }
     var showImageOptions by remember { mutableStateOf(false) }
 
+    // Permission dialog states
+    var showCameraPermissionRationale by remember { mutableStateOf(false) }
+    var showStoragePermissionRationale by remember { mutableStateOf(false) }
+    var showPermissionSettingsDialog by remember { mutableStateOf(false) }
+    var permissionDeniedMessage by remember { mutableStateOf("") }
+
     // Generate a timestamp-based filename for temporary photo file
     val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
     val photoFile = File.createTempFile(
@@ -81,9 +88,29 @@ fun DishReviewScreen(
         photoFile
     )
 
-    // Permission request state
-    var shouldShowPermissionRationale by remember { mutableStateOf(false) }
+    // Multiple permission launcher
+    val multiplePermissionsLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val allPermissionsGranted = permissions.entries.all { it.value }
 
+        if (allPermissionsGranted) {
+            // All permissions granted, open image options
+            showImageOptions = true
+        } else {
+            // Check which permission was denied
+            if (permissions[Manifest.permission.CAMERA] == false) {
+                showCameraPermissionRationale = true
+            }
+
+            val storagePermission = PermissionHandler.getStoragePermission()
+            if (permissions[storagePermission] == false) {
+                showStoragePermissionRationale = true
+            }
+        }
+    }
+
+    // Photo picker launcher
     val photoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
@@ -121,7 +148,18 @@ fun DishReviewScreen(
         if (isGranted) {
             cameraLauncher.launch(photoUri)
         } else {
-            shouldShowPermissionRationale = true
+            showCameraPermissionRationale = true
+        }
+    }
+
+    // Storage permission launcher
+    val storagePermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            photoPickerLauncher.launch("image/*")
+        } else {
+            showStoragePermissionRationale = true
         }
     }
 
@@ -241,7 +279,11 @@ fun DishReviewScreen(
                         .size(200.dp)
                         .clip(RoundedCornerShape(8.dp))
                         .border(1.dp, Color.Gray, RoundedCornerShape(8.dp))
-                        .clickable { showImageOptions = true },
+                        .clickable {
+                            // First, check permissions before showing image options
+                            val requiredPermissions = PermissionHandler.getRequiredImagePermissions()
+                            multiplePermissionsLauncher.launch(requiredPermissions.toTypedArray())
+                        },
                     contentAlignment = Alignment.Center
                 ) {
                     Column(
@@ -376,7 +418,13 @@ fun DishReviewScreen(
                 Button(
                     onClick = {
                         showImageOptions = false
-                        photoPickerLauncher.launch("image/*")
+                        // Check storage permission
+                        val storagePermission = PermissionHandler.getStoragePermission()
+                        if (PermissionHandler.isStoragePermissionGranted(context)) {
+                            photoPickerLauncher.launch("image/*")
+                        } else {
+                            storagePermissionLauncher.launch(storagePermission)
+                        }
                     }
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -394,16 +442,10 @@ fun DishReviewScreen(
                     onClick = {
                         showImageOptions = false
                         // Check camera permission
-                        when {
-                            ContextCompat.checkSelfPermission(
-                                context,
-                                Manifest.permission.CAMERA
-                            ) == PackageManager.PERMISSION_GRANTED -> {
-                                cameraLauncher.launch(photoUri)
-                            }
-                            else -> {
-                                cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
-                            }
+                        if (PermissionHandler.isCameraPermissionGranted(context)) {
+                            cameraLauncher.launch(photoUri)
+                        } else {
+                            cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
                         }
                     }
                 ) {
@@ -420,15 +462,86 @@ fun DishReviewScreen(
         )
     }
 
-    // Permission rationale dialog
-    if (shouldShowPermissionRationale) {
+    // Camera permission rationale dialog
+    if (showCameraPermissionRationale) {
         AlertDialog(
-            onDismissRequest = { shouldShowPermissionRationale = false },
-            title = { Text("Camera Permission") },
-            text = { Text("Camera permission is needed to take photos. Please grant the permission in app settings.") },
+            onDismissRequest = { showCameraPermissionRationale = false },
+            title = { Text("Camera Permission Required") },
+            text = {
+                Text("Camera permission is needed to take photos for your review. Would you like to grant this permission?")
+            },
             confirmButton = {
-                Button(onClick = { shouldShowPermissionRationale = false }) {
-                    Text("OK")
+                Button(onClick = {
+                    showCameraPermissionRationale = false
+                    cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+                }) {
+                    Text("Grant Permission")
+                }
+            },
+            dismissButton = {
+                Button(onClick = {
+                    showCameraPermissionRationale = false
+                    permissionDeniedMessage = "You won't be able to take photos without camera permission"
+                    showPermissionSettingsDialog = true
+                }) {
+                    Text("Not Now")
+                }
+            }
+        )
+    }
+
+    // Storage permission rationale dialog
+    if (showStoragePermissionRationale) {
+        AlertDialog(
+            onDismissRequest = { showStoragePermissionRationale = false },
+            title = { Text("Storage Permission Required") },
+            text = {
+                Text("Storage permission is needed to select photos from your gallery. Would you like to grant this permission?")
+            },
+            confirmButton = {
+                Button(onClick = {
+                    showStoragePermissionRationale = false
+                    val storagePermission = PermissionHandler.getStoragePermission()
+                    storagePermissionLauncher.launch(storagePermission)
+                }) {
+                    Text("Grant Permission")
+                }
+            },
+            dismissButton = {
+                Button(onClick = {
+                    showStoragePermissionRationale = false
+                    permissionDeniedMessage = "You won't be able to select photos without storage permission"
+                    showPermissionSettingsDialog = true
+                }) {
+                    Text("Not Now")
+                }
+            }
+        )
+    }
+
+    // Settings dialog for permanently denied permissions
+    if (showPermissionSettingsDialog) {
+        AlertDialog(
+            onDismissRequest = { showPermissionSettingsDialog = false },
+            title = { Text("Permission Denied") },
+            text = {
+                Text("$permissionDeniedMessage. You can enable it in app settings.")
+            },
+            confirmButton = {
+                Button(onClick = {
+                    showPermissionSettingsDialog = false
+                    // Open app settings
+                    val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                        data = Uri.fromParts("package", context.packageName, null)
+                    }
+                    context.startActivity(intent)
+                }) {
+                    Text("Open Settings")
+                }
+            },
+            dismissButton = {
+                Button(onClick = { showPermissionSettingsDialog = false }) {
+                    Text("Cancel")
                 }
             }
         )

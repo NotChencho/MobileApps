@@ -1,9 +1,11 @@
 package es.uc3m.android.mobile_app.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Star
@@ -11,11 +13,14 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
+import coil.compose.AsyncImage
 import es.uc3m.android.mobile_app.viewmodel.MyViewModel
 import es.uc3m.android.mobile_app.viewmodel.Review
 import es.uc3m.android.mobile_app.NavGraph
@@ -163,6 +168,25 @@ fun ReviewSummaryCard(review: Review) {
             .padding(vertical = 4.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
+            // Display review photo if available
+            if (!review.photoUrl.isNullOrEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(180.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(Color.LightGray)
+                        .padding(bottom = 12.dp)
+                ) {
+                    AsyncImage(
+                        model = review.photoUrl,
+                        contentDescription = "Review photo of ${review.dish}",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                }
+            }
+
             Text(
                 text = "${review.dish} at ${review.restaurant}",
                 style = MaterialTheme.typography.titleMedium,
