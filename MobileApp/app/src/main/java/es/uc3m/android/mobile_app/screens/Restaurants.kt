@@ -21,6 +21,9 @@ import androidx.compose.ui.layout.ContentScale // Import ContentScale
 import androidx.compose.ui.res.painterResource // Import painterResource
 import es.uc3m.android.mobile_app.R // Import your R class
 import coil.compose.AsyncImage // Import AsyncImage
+import android.content.Intent // Import Intent
+import android.net.Uri // Import Uri
+import androidx.compose.ui.platform.LocalContext // Import LocalContext
 
 
 @Composable
@@ -33,6 +36,9 @@ fun RestaurantDetailsScreen(
 
     // Track loading state
     var isLoading by remember { mutableStateOf(true) }
+
+    // Get the current context to launch intents
+    val context = LocalContext.current // Get the context
 
     // If we have a restaurant ID from navigation, load that specific restaurant
     LaunchedEffect(restaurantId) {
@@ -80,10 +86,10 @@ fun RestaurantDetailsScreen(
             ) {
 
                 AsyncImage(
-                   model = restaurant.imageUrl,
-                   contentDescription = null,
-                   modifier = Modifier.fillMaxSize(),
-                   contentScale = ContentScale.Crop
+                    model = restaurant.imageUrl,
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
                 )
             }
 
@@ -100,13 +106,29 @@ fun RestaurantDetailsScreen(
                 modifier = Modifier.padding(horizontal = 16.dp)
             )
 
-            // 4. Price Range Information
+            // 3. Price Range Information
             Text(
                 text = "Price Based On Reviews ${restaurant.priceRange}",
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier
                     .padding(horizontal = 16.dp, vertical = 8.dp)
             )
+
+            // 4. Website Button
+            restaurant.websiteLink?.let { url -> // Check if websiteLink is not null
+                Button(
+                    onClick = {
+                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                        context.startActivity(intent)
+                    },
+                    modifier = Modifier
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                        .fillMaxWidth() // Make the button fill the width
+                ) {
+                    Text("Visit Website")
+                }
+            }
+
 
             // 5. Tabs (Recommended vs Other)
             var selectedTabIndex by remember { mutableStateOf(0) }
@@ -170,11 +192,11 @@ fun DishItem(dish: Dish, restaurantName: String, navController: NavHostControlle
                 .background(Color.Gray)
         ) {
             AsyncImage(
-               model = dish.imageUrl,
-               contentDescription = dish.name,
-               modifier = Modifier.fillMaxSize(),
-               contentScale = ContentScale.Crop
-             )
+                model = dish.imageUrl,
+                contentDescription = dish.name,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
+            )
         }
 
         Spacer(modifier = Modifier.width(16.dp))
@@ -237,7 +259,8 @@ data class Restaurant(
     val rating: Double = 0.0,
     val dishes: List<Dish> = emptyList(),
     val Allergies: List<String>? = null,
-    val Other: List<String>? = null
+    val Other: List<String>? = null,
+    val websiteLink: String? = "https://www.latagliatella.es/" // Added websiteLink field
 )
 
 data class GeoPoint(

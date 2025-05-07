@@ -202,11 +202,6 @@ fun MyScreen(viewModel: MyViewModel) {
                     MyTopAppBar(scope, drawerState, snack)
                 }
             },
-            floatingActionButton = {
-                if (isLoggedIn) {
-                    MyFloatingActionButtons(scope, snack, navController)
-                }
-            },
             content = { innerPadding ->
                 MyContent(
                     modifier = Modifier.padding(innerPadding),
@@ -246,68 +241,7 @@ fun MyTopAppBar(scope: CoroutineScope, drawerState: DrawerState, snack: Snackbar
             }
         },
         title = { Text(text = stringResource(R.string.app_name)) },
-        actions = {
-            IconButton(onClick = {
-                scope.launch {
-                    snack.showSnackbar("TODO: Search")
-                }
-            }) {
-                Icon(
-                    imageVector = Icons.Rounded.Search,
-                    contentDescription = stringResource(R.string.search)
-                )
-            }
-            MyDropdownMenu(scope, snack)
-        })
-}
-
-@Composable
-fun MyDropdownMenu(scope: CoroutineScope, snack: SnackbarHostState) {
-    var expanded by remember { mutableStateOf(false) }
-    Box {
-        IconButton(onClick = { expanded = !expanded }) {
-            Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.more))
-        }
-        DropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false }
-        ) {
-            DropdownMenuItem(
-                text = { Text(stringResource(R.string.dropdown_1)) },
-                onClick = {
-                    scope.launch {
-                        snack.showSnackbar("TODO: Option 1")
-                    }
-                    expanded = false
-                }
-            )
-            DropdownMenuItem(
-                text = { Text(stringResource(R.string.dropdown_2)) },
-                onClick = {
-                    scope.launch {
-                        snack.showSnackbar("TODO: Option 2")
-                    }
-                    expanded = false
-                }
-            )
-        }
-    }
-}
-
-@Composable
-fun MyFloatingActionButtons(scope: CoroutineScope, snack: SnackbarHostState, navController: NavHostController) {
-    val currentBackStackEntry by navController.currentBackStackEntryAsState()
-    val currentRoute = currentBackStackEntry?.destination?.route
-
-    if (currentRoute == NavGraph.Reviews.route) {
-        FloatingActionButton(onClick = {
-            scope.launch {
-                snack.showSnackbar("TODO: Add")
-            }
-        }) {
-            Icon(Icons.Default.Add, contentDescription = stringResource(R.string.add))
-        }
-    }
+        )
 }
 
 // --- Updated MyContent ---
