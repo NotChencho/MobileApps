@@ -14,6 +14,7 @@ import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.Reviews
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material.icons.outlined.Explore
 import androidx.compose.material.icons.outlined.Reviews
 import androidx.compose.material.icons.outlined.Settings
@@ -120,12 +121,12 @@ fun MyScreen(viewModel: MyViewModel) {
                 title = "Settings",
                 selectedIcon = Icons.Filled.Settings,
                 unselectedIcon = Icons.Outlined.Settings,
-                route = NavGraph.Settings.createRoute("From Navigation")
+                route = NavGraph.Settings.route
             ),
             NavigationItem(
                 title = "Profile",
                 selectedIcon = Icons.Filled.AccountCircle,
-                unselectedIcon = Icons.Filled.AccountCircle,
+                unselectedIcon = Icons.Outlined.AccountCircle,
                 route = NavGraph.Profile.route
             )
         )
