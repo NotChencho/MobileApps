@@ -29,12 +29,15 @@ import es.uc3m.android.mobile_app.ui.theme.MyAppTheme
 import es.uc3m.android.mobile_app.viewmodel.DataState
 import es.uc3m.android.mobile_app.viewmodel.MyViewModel
 import es.uc3m.android.mobile_app.viewmodel.UserPreferences
-import androidx.compose.ui.layout.ContentScale // Import ContentScale
-import androidx.compose.ui.res.painterResource // Import painterResource
-import coil.compose.AsyncImage // Import AsyncImage
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import coil.compose.AsyncImage
 import androidx.compose.ui.platform.LocalContext
 import es.uc3m.android.mobile_app.viewmodel.Review
 import androidx.compose.ui.Modifier
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 
 
 @Composable
@@ -42,6 +45,9 @@ fun ExploreScreen(
     navController: NavHostController,
     viewModel: MyViewModel = viewModel()
 ) {
+    // Track if map is expanded (0 = normal, 1 = half screen, 2 = full screen)
+    var mapExpandState by remember { mutableStateOf(0) }
+
     // Load restaurants when the screen is first displayed
     LaunchedEffect(Unit) {
         viewModel.loadRestaurants()
@@ -59,146 +65,203 @@ fun ExploreScreen(
     val allRestaurantsState by viewModel.restaurants.collectAsState()
 
     Column(modifier = Modifier.fillMaxSize()) {
-        // Section 1: Google Maps (Takes 1/3 of total height)
+        // Section 1: Google Maps (Can take variable height depending on expansion state)
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .weight(1f) // Assign 1/3 of the total available height
+                .let {
+                    when (mapExpandState) {
+                        0 -> it.weight(1f) // Normal 1/3 view
+                        1 -> it.weight(1.5f) // Half screen view
+                        2 -> it.fillMaxSize() // Full screen view
+                        else -> it.weight(1f)
+                    }
+                }
                 .padding(16.dp)
                 .clip(RoundedCornerShape(24.dp))
                 .background(Color.LightGray)
         ) {
             GoogleMapWidget(filteredRestaurantsState)
-        }
 
-        // Active filters display
-        userPreferences?.let { prefs ->
-            Card(
+            // Control buttons for map size
+            Row(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
-                    .padding(top = 8.dp, bottom = 8.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                )
+                    .align(Alignment.TopStart)
+                    .padding(16.dp)
             ) {
-                Column(
-                    modifier = Modifier.padding(12.dp)
-                ) {
-                    Text(
-                        text = "Active Filters",
-                        style = MaterialTheme.typography.titleSmall
-                    )
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                // If in full screen mode, add "Back" button
+                if (mapExpandState == 2) {
+                    IconButton(
+                        onClick = { mapExpandState = 0 }, // Return to normal view
+                        modifier = Modifier
+                            .size(48.dp)
+                            .background(
+                                color = MaterialTheme.colorScheme.primaryContainer,
+                                shape = RoundedCornerShape(24.dp)
+                            )
                     ) {
-                        FilterChip(
-                            selected = true,
-                            onClick = {
-                                // Navigate to settings
-                                navController.navigate(NavGraph.Settings.createRoute("From Explore"))
-                            },
-                            label = { Text("Food: ${prefs.foodType}") }
+                        Icon(
+                            imageVector = Icons.Filled.KeyboardArrowDown,
+                            contentDescription = "Minimize Map",
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer
                         )
-                        FilterChip(
-                            selected = true,
-                            onClick = {
-                                // Navigate to settings
-                                navController.navigate(NavGraph.Settings.createRoute("From Explore"))
-                            },
-                            label = { Text("Price: ${prefs.priceRange}") }
+                    }
+                } else {
+                    // Expand/collapse button cycles through states
+                    IconButton(
+                        onClick = {
+                            // Cycle through states: 0 -> 1 -> 2 -> 0
+                            mapExpandState = (mapExpandState + 1) % 3
+                        },
+                        modifier = Modifier
+                            .size(48.dp)
+                            .background(
+                                color = MaterialTheme.colorScheme.primaryContainer,
+                                shape = RoundedCornerShape(24.dp)
+                            )
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.KeyboardArrowUp,
+                            contentDescription = "Expand Map",
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer
                         )
                     }
                 }
             }
         }
 
-        // Container for Section 2 & 3 (Takes the remaining 2/3 height)
-        Column(modifier = Modifier.weight(2f)) {
-            when (filteredRestaurantsState) {
-                is DataState.Loading -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize(), // Fill the 2/3 parent
-                        contentAlignment = Alignment.Center
+        // Active filters display - only show when not in full screen mode
+        if (mapExpandState != 2) {
+            userPreferences?.let { prefs ->
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                        .padding(top = 8.dp, bottom = 8.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier.padding(12.dp)
                     ) {
-                        CircularProgressIndicator()
+                        Text(
+                            text = "Active Filters",
+                            style = MaterialTheme.typography.titleSmall
+                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            FilterChip(
+                                selected = true,
+                                onClick = {
+                                    // Navigate to settings
+                                    navController.navigate(NavGraph.Settings.createRoute("From Explore"))
+                                },
+                                label = { Text("Food: ${prefs.foodType}") }
+                            )
+                            FilterChip(
+                                selected = true,
+                                onClick = {
+                                    // Navigate to settings
+                                    navController.navigate(NavGraph.Settings.createRoute("From Explore"))
+                                },
+                                label = { Text("Price: ${prefs.priceRange}") }
+                            )
+                        }
                     }
                 }
+            }
+        }
 
-                is DataState.Error -> {
-                    val errorMessage = (filteredRestaurantsState as DataState.Error).message
-                    Box(
-                        modifier = Modifier.fillMaxSize(), // Fill the 2/3 parent
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text("Error: $errorMessage")
-                    }
-                }
-
-                is DataState.Success -> {
-                    val restaurants = (filteredRestaurantsState as DataState.Success<List<Restaurant>>).data
-
-                    if (restaurants.isEmpty()) {
+        // Container for Section 2 & 3 (Takes the remaining height) - only show when not in full screen mode
+        if (mapExpandState != 2) {
+            Column(modifier = Modifier.weight(if (mapExpandState == 1) 1.5f else 2f)) {
+                when (filteredRestaurantsState) {
+                    is DataState.Loading -> {
                         Box(
-                            modifier = Modifier.fillMaxSize(), // Fill the 2/3 parent
+                            modifier = Modifier.fillMaxSize(),
                             contentAlignment = Alignment.Center
                         ) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text("No restaurants match your preferences")
-                                Spacer(modifier = Modifier.height(16.dp))
-                                Button(onClick = {
-                                    navController.navigate(NavGraph.Settings.createRoute("From Empty Results"))
-                                }) {
-                                    Text("Update Preferences")
-                                }
-                            }
+                            CircularProgressIndicator()
                         }
-                    } else {
-                        Column(modifier = Modifier.weight(1f)) { // Takes 1/2 of its parent's height
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = "Restaurants For You",
-                                    style = MaterialTheme.typography.titleMedium,
-                                )
+                    }
 
-                                TextButton(onClick = {
-                                    navController.navigate(NavGraph.Settings.createRoute("From Restaurant List"))
-                                }) {
-                                    Text("Change")
+                    is DataState.Error -> {
+                        val errorMessage = (filteredRestaurantsState as DataState.Error).message
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text("Error: $errorMessage")
+                        }
+                    }
+
+                    is DataState.Success -> {
+                        val restaurants = (filteredRestaurantsState as DataState.Success<List<Restaurant>>).data
+
+                        if (restaurants.isEmpty()) {
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text("No restaurants match your preferences")
+                                    Spacer(modifier = Modifier.height(16.dp))
+                                    Button(onClick = {
+                                        navController.navigate(NavGraph.Settings.createRoute("From Empty Results"))
+                                    }) {
+                                        Text("Update Preferences")
+                                    }
                                 }
                             }
-
-                            LazyColumn(
-                                modifier = Modifier.fillMaxSize() // Fill the space provided by the weighted parent Column
-                            ) {
-                                items(restaurants) { restaurant ->
-                                    RestaurantItem(
-                                        restaurant = restaurant,
-                                        onClick = {
-                                            viewModel.setSelectedRestaurant(restaurant)
-                                            navController.navigate(NavGraph.RestaurantDetails.createRoute(restaurant.id))
-                                        }
+                        } else {
+                            Column(modifier = Modifier.weight(1f)) { // Takes 1/2 of its parent's height
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = "Restaurants For You",
+                                        style = MaterialTheme.typography.titleMedium,
                                     )
-                                    Divider(modifier = Modifier.padding(horizontal = 16.dp))
+
+                                    TextButton(onClick = {
+                                        navController.navigate(NavGraph.Settings.createRoute("From Restaurant List"))
+                                    }) {
+                                        Text("Change")
+                                    }
+                                }
+
+                                LazyColumn(
+                                    modifier = Modifier.fillMaxSize() // Fill the space provided by the weighted parent Column
+                                ) {
+                                    items(restaurants) { restaurant ->
+                                        RestaurantItem(
+                                            restaurant = restaurant,
+                                            onClick = {
+                                                viewModel.setSelectedRestaurant(restaurant)
+                                                navController.navigate(NavGraph.RestaurantDetails.createRoute(restaurant.id))
+                                            }
+                                        )
+                                        Divider(modifier = Modifier.padding(horizontal = 16.dp))
+                                    }
                                 }
                             }
-                        }
 
-                        // Section 3: Friends Activity (Takes 1/2 of the 2/3 container = 1/3 of total)
-                        Column(modifier = Modifier.weight(1f)) { // Takes 1/2 of its parent's height
-                            FriendsActivitySectionContent(navController = navController) // Call the content composable
+                            // Section 3: Friends Activity (Takes 1/2 of the remaining container)
+                            Column(modifier = Modifier.weight(1f)) {
+                                FriendsActivitySectionContent(navController = navController)
+                            }
                         }
                     }
                 }
             }
-        }
+        } // Close if (mapExpandState != 2)
     }
 }
 
@@ -266,7 +329,7 @@ fun RestaurantItem(
                 contentDescription = restaurant.name, // Accessibility: Describe the image
                 modifier = Modifier.fillMaxSize(), // Make the image fill the Box
                 contentScale = ContentScale.Crop, // Crop the image to fit the bounds
-                            )
+            )
         }
         Spacer(modifier = Modifier.width(16.dp))
         Column(modifier = Modifier.weight(1f)) {

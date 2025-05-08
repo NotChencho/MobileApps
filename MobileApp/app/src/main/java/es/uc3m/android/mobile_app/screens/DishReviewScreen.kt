@@ -77,16 +77,23 @@ fun DishReviewScreen(
 
     // Generate a timestamp-based filename for temporary photo file
     val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
-    val photoFile = File.createTempFile(
-        "JPEG_${timeStamp}_",
-        ".jpg",
-        context.cacheDir
-    )
-    val photoUri = FileProvider.getUriForFile(
-        context,
-        "${context.packageName}.provider",
-        photoFile
-    )
+
+    // Create a scope-level photoFile that can be accessed later
+    val photoFile = remember {
+        File.createTempFile(
+            "JPEG_${timeStamp}_",
+            ".jpg",
+            context.cacheDir
+        )
+    }
+
+    val photoUri = remember {
+        FileProvider.getUriForFile(
+            context,
+            "${context.packageName}.provider",
+            photoFile
+        )
+    }
 
     // Multiple permission launcher
     val multiplePermissionsLauncher = rememberLauncherForActivityResult(
@@ -115,29 +122,44 @@ fun DishReviewScreen(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         uri?.let {
-            // Create a copy of the selected image in app's cache directory
-            // This ensures we have direct file access
-            val inputStream = context.contentResolver.openInputStream(it)
-            val tempFile = File.createTempFile(
-                "JPEG_${timeStamp}_",
-                ".jpg",
-                context.cacheDir
-            )
-            inputStream?.use { input ->
-                tempFile.outputStream().use { output ->
-                    input.copyTo(output)
+            try {
+                // Create a copy of the selected image in app's cache directory
+                val inputStream = context.contentResolver.openInputStream(it)
+                val tempFile = File.createTempFile(
+                    "JPEG_${timeStamp}_",
+                    ".jpg",
+                    context.cacheDir
+                )
+                inputStream?.use { input ->
+                    tempFile.outputStream().use { output ->
+                        input.copyTo(output)
+                    }
                 }
+                imageUri = Uri.fromFile(tempFile)
+            } catch (e: Exception) {
+                submitError = "Error processing gallery image: ${e.message}"
             }
-            imageUri = Uri.fromFile(tempFile)
         }
     }
 
-    // Camera launcher
+    // Camera launcher - FIXED to update the imageUri correctly after taking a photo
     val cameraLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.TakePicture()
     ) { success ->
         if (success) {
-            imageUri = photoUri
+            try {
+                // Ensure the photo file exists and has content
+                if (photoFile.exists() && photoFile.length() > 0) {
+                    // Update UI with the image from the camera
+                    imageUri = photoUri
+                } else {
+                    submitError = "Camera returned success but photo file is empty or missing"
+                }
+            } catch (e: Exception) {
+                submitError = "Error processing camera image: ${e.message}"
+            }
+        } else {
+            submitError = "Failed to take photo"
         }
     }
 
@@ -344,7 +366,6 @@ fun DishReviewScreen(
                         title = title,
                         photoUrl = "", // This will be filled by the ViewModel
                         timestamp = System.currentTimeMillis()
-
                     )
 
                     // Show loading state
@@ -443,7 +464,20 @@ fun DishReviewScreen(
                         showImageOptions = false
                         // Check camera permission
                         if (PermissionHandler.isCameraPermissionGranted(context)) {
-                            cameraLauncher.launch(photoUri)
+                            // Reset photoFile to ensure we're working with a fresh file
+                            try {
+                                // Make sure the temp file is valid and writable before launching camera
+                                if (!photoFile.exists()) {
+                                    photoFile.createNewFile()
+                                } else if (!photoFile.canWrite()) {
+                                    // Create a new file if current one can't be written to
+                                    photoFile.delete()
+                                    photoFile.createNewFile()
+                                }
+                                cameraLauncher.launch(photoUri)
+                            } catch (e: Exception) {
+                                submitError = "Error preparing camera: ${e.message}"
+                            }
                         } else {
                             cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
                         }
