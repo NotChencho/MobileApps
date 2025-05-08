@@ -41,29 +41,16 @@ import es.uc3m.android.mobile_app.viewmodel.MyViewModel
 
 @Composable
 fun SignUpScreen(
-    viewModel: MyViewModel, // Consider using hiltViewModel() or similar
+    viewModel: MyViewModel,
     navController: NavHostController
 ) {
     var login by rememberSaveable { mutableStateOf("") }
     var password by rememberSaveable { mutableStateOf("") }
     var confirmPasswd by rememberSaveable { mutableStateOf("") }
-    var showDialog by rememberSaveable { mutableStateOf(false) } // For password mismatch
+    var showDialog by rememberSaveable { mutableStateOf(false) }
 
-    // Observe the auth state from the ViewModel
+    // Observe the auth sta/te from the ViewModel
     val authState by viewModel.authResult.collectAsState()
-
-    // --- Optional: Add state for showing SIGNUP error messages ---
-    // var signupErrorMessage by rememberSaveable { mutableStateOf<String?>(null) }
-    // LaunchedEffect(authState) {
-    //     if (authState is AuthResult.Error) {
-    //         signupErrorMessage = authState.message
-    //          // Optionally reset the state in VM after showing message
-    //         // viewModel.resetAuthResult()
-    //     } else {
-    //         signupErrorMessage = null
-    //     }
-    // }
-    // ---
 
     Row(modifier = Modifier.fillMaxSize()) {
         Spacer(
@@ -75,15 +62,12 @@ fun SignUpScreen(
             modifier = Modifier
                 .weight(0.7f)
                 .fillMaxHeight(),
-            // Center content within this Box
             contentAlignment = Alignment.Center
         ) {
-            // Conditionally display Loading or Content
             if (authState == AuthResult.Loading) {
                 CircularProgressIndicator()
             } else {
-                // --- Main Content Column ---
-                Column(modifier = Modifier.fillMaxSize()) { // Fill the box
+                Column(modifier = Modifier.fillMaxSize()) {
                     Spacer(modifier = Modifier.fillMaxHeight(0.2f))
                     Text(
                         text = stringResource(R.string.create_account),
@@ -102,7 +86,6 @@ fun SignUpScreen(
                             Text(stringResource(R.string.email_edit_text))
                         },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-                        // Disable fields when loading
                         enabled = authState !is AuthResult.Loading
                     )
                     TextField(
@@ -113,7 +96,6 @@ fun SignUpScreen(
                         },
                         visualTransformation = PasswordVisualTransformation(),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                        // Disable fields when loading
                         enabled = authState !is AuthResult.Loading
                     )
                     TextField(
@@ -128,19 +110,8 @@ fun SignUpScreen(
                         enabled = authState !is AuthResult.Loading
                     )
 
-                    // --- Optional: Display Signup Error Message ---
-                    // signupErrorMessage?.let {
-                    //    Text(
-                    //        text = it,
-                    //        color = MaterialTheme.colorScheme.error,
-                    //        modifier = Modifier.padding(top = 8.dp)
-                    //     )
-                    // }
-                    // ---
-
                     Button(
                         onClick = {
-                            // signupErrorMessage = null // Reset error message
                             if (password != confirmPasswd) {
                                 showDialog = true // Show password mismatch dialog
                             } else {
@@ -150,7 +121,6 @@ fun SignUpScreen(
                         modifier = Modifier
                             .align(alignment = Alignment.End)
                             .padding(top = 16.dp),
-                        // Disable button when loading
                         enabled = authState !is AuthResult.Loading
                     ) {
                         Row(
@@ -164,21 +134,18 @@ fun SignUpScreen(
                             )
                         }
                     }
-                    // Spacer to push the bottom button down
                     Spacer(modifier = Modifier.weight(1f))
                 }
 
-                // --- Bottom Navigation --- (Aligned to bottom of the outer Box)
                 Column(
                     modifier = Modifier
                         .align(alignment = Alignment.BottomCenter)
-                        .fillMaxWidth() // Ensure it takes width for alignment
-                        .padding(bottom = 32.dp) // Add some padding from the bottom edge
+                        .fillMaxWidth()
+                        .padding(bottom = 32.dp)
                 ) {
                     TextButton(
                         onClick = { navController.navigate(NavGraph.Login.route) },
                         modifier = Modifier.fillMaxWidth(),
-                        // Disable button when loading
                         enabled = authState !is AuthResult.Loading
                     ) {
                         Text(stringResource(R.string.already_account))
@@ -192,7 +159,6 @@ fun SignUpScreen(
                 .fillMaxHeight()
         )
 
-        // Password mismatch dialog remains unchanged
         if (showDialog) {
             DisplayDialog(
                 title = stringResource(R.string.error),
@@ -203,7 +169,6 @@ fun SignUpScreen(
     }
 }
 
-// DisplayDialog function remains unchanged
 @Composable
 fun DisplayDialog(
     title: String,

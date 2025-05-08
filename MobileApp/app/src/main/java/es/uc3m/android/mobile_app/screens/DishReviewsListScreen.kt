@@ -36,10 +36,8 @@ fun DishReviewsListScreen(
     restaurantName: String,
     dishName: String
 ) {
-    // State for fullscreen image dialog
     var selectedImageUrl by remember { mutableStateOf<String?>(null) }
 
-    // Make sure reviews are loaded
     LaunchedEffect(Unit) {
         viewModel.loadReviews()
     }
@@ -56,7 +54,6 @@ fun DishReviewsListScreen(
             .fillMaxSize()
             .padding(16.dp)
     ) {
-        // Header
         Text(
             text = "Reviews for $dishName",
             style = MaterialTheme.typography.headlineSmall,
@@ -81,7 +78,6 @@ fun DishReviewsListScreen(
             Text("Add Your Review")
         }
 
-        // Reviews list
         if (dishReviews.isEmpty()) {
             Box(
                 modifier = Modifier
@@ -114,7 +110,6 @@ fun DishReviewsListScreen(
         }
     }
 
-    // Fullscreen image dialog
     if (selectedImageUrl != null) {
         Dialog(
             onDismissRequest = { selectedImageUrl = null }
@@ -164,13 +159,11 @@ fun ReviewCard(
         Column(
             modifier = Modifier.padding(16.dp)
         ) {
-            // Review header with user and date
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // User info
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
                         imageVector = Icons.Filled.Person,
@@ -185,7 +178,6 @@ fun ReviewCard(
                     )
                 }
 
-                // Format timestamp
                 val formatter = SimpleDateFormat("MMM d, yyyy", Locale.getDefault())
                 val dateString = formatter.format(Date(review.timestamp))
 
@@ -198,7 +190,6 @@ fun ReviewCard(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Rating and title
             Row(
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -232,7 +223,6 @@ fun ReviewCard(
             if (!review.photoUrl.isNullOrEmpty()) {
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Add debug logging
                 println("Loading photo from URL: ${review.photoUrl}")
 
                 Image(

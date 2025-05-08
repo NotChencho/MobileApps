@@ -17,13 +17,11 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import es.uc3m.android.mobile_app.viewmodel.MyViewModel
 import com.google.firebase.firestore.DocumentId
-import androidx.compose.ui.layout.ContentScale // Import ContentScale
-import androidx.compose.ui.res.painterResource // Import painterResource
-import es.uc3m.android.mobile_app.R // Import your R class
-import coil.compose.AsyncImage // Import AsyncImage
-import android.content.Intent // Import Intent
-import android.net.Uri // Import Uri
-import androidx.compose.ui.platform.LocalContext // Import LocalContext
+import androidx.compose.ui.layout.ContentScale
+import coil.compose.AsyncImage
+import android.content.Intent
+import android.net.Uri
+import androidx.compose.ui.platform.LocalContext
 
 
 @Composable
@@ -33,12 +31,8 @@ fun RestaurantDetailsScreen(
     restaurantId: String? = null
 ) {
     val selectedRestaurant by viewModel.selectedRestaurant.collectAsState()
-
-    // Track loading state
     var isLoading by remember { mutableStateOf(true) }
-
-    // Get the current context to launch intents
-    val context = LocalContext.current // Get the context
+    val context = LocalContext.current
 
     // If we have a restaurant ID from navigation, load that specific restaurant
     LaunchedEffect(restaurantId) {
@@ -51,14 +45,12 @@ fun RestaurantDetailsScreen(
         }
     }
 
-    // Watch for changes in selectedRestaurant to update loading state
     LaunchedEffect(selectedRestaurant) {
         if (selectedRestaurant != null) {
             isLoading = false
         }
     }
 
-    // If we're still loading, show loading state
     if (isLoading) {
         Box(
             modifier = Modifier.fillMaxSize(),
@@ -69,15 +61,12 @@ fun RestaurantDetailsScreen(
         return
     }
 
-    // Once we have the restaurant data, display it
     selectedRestaurant?.let { restaurant ->
-        // Top-level column for the entire screen
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .background(MaterialTheme.colorScheme.background)
         ) {
-            // 1. Header Image or Banner
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -93,7 +82,6 @@ fun RestaurantDetailsScreen(
                 )
             }
 
-            // 2. Restaurant Title & Subtitle
             Text(
                 text = restaurant.name,
                 style = MaterialTheme.typography.headlineSmall,
@@ -106,7 +94,6 @@ fun RestaurantDetailsScreen(
                 modifier = Modifier.padding(horizontal = 16.dp)
             )
 
-            // 3. Price Range Information
             Text(
                 text = "Price Based On Reviews ${restaurant.priceRange}",
                 style = MaterialTheme.typography.bodyMedium,
@@ -114,7 +101,6 @@ fun RestaurantDetailsScreen(
                     .padding(horizontal = 16.dp, vertical = 8.dp)
             )
 
-            // 4. Website Button
             restaurant.websiteLink?.let { url -> // Check if websiteLink is not null
                 Button(
                     onClick = {
@@ -129,8 +115,6 @@ fun RestaurantDetailsScreen(
                 }
             }
 
-
-            // 5. Tabs (Recommended vs Other)
             var selectedTabIndex by remember { mutableStateOf(0) }
             val tabs = listOf("Recommended", "Other")
 
@@ -147,8 +131,6 @@ fun RestaurantDetailsScreen(
                 }
             }
 
-            // 6. List of Dishes based on selected tab
-
             val recommendedDishes = restaurant.dishes.filter { it.isRecommended == true }
             val otherDishes = restaurant.dishes.filter { it.isRecommended != true }
 
@@ -157,7 +139,7 @@ fun RestaurantDetailsScreen(
             LazyColumn(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(1f) // Let the list take up remaining space
+                    .weight(1f)
             ) {
                 items(dishesToShow) { dish ->
                     DishItem(dish, restaurant.name, navController)
@@ -167,7 +149,6 @@ fun RestaurantDetailsScreen(
 
         }
     } ?: run {
-        // If somehow selectedRestaurant is still null but we're not loading
         Box(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
@@ -184,7 +165,6 @@ fun DishItem(dish: Dish, restaurantName: String, navController: NavHostControlle
             .fillMaxWidth()
             .padding(16.dp)
     ) {
-        // Dish image placeholder
         Box(
             modifier = Modifier
                 .size(64.dp)
@@ -201,7 +181,6 @@ fun DishItem(dish: Dish, restaurantName: String, navController: NavHostControlle
 
         Spacer(modifier = Modifier.width(16.dp))
 
-        // Dish info
         Column(
             modifier = Modifier
                 .weight(1f)
@@ -213,22 +192,17 @@ fun DishItem(dish: Dish, restaurantName: String, navController: NavHostControlle
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
-            // Display star rating using repeated stars
             Text(text = "⭐".repeat(dish.rating))
-            // Display price
             Text(
                 text = "€${dish.price}",
                 style = MaterialTheme.typography.bodyMedium
             )
         }
 
-        // Review actions
         Column {
 
             Button(
                 onClick = {
-                    // Get the restaurant ID from the restaurant object
-                    // or use an empty string if somehow not available
                     val restaurantIdToPass = ""
                     navController.navigate("dish_review/${restaurantIdToPass}/${restaurantName}/${dish.name}")
                 },
@@ -249,7 +223,7 @@ fun DishItem(dish: Dish, restaurantName: String, navController: NavHostControlle
 }
 
 data class Restaurant(
-    @DocumentId val id: String = "", // This will automatically map to the Firestore document ID
+    @DocumentId val id: String = "",
     val name: String = "",
     val cuisine: String = "",
     val imageUrl: String = "",

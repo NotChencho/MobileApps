@@ -6,10 +6,10 @@ data class Review(
     @get:Exclude var id: String? = null,
     val user: String = "",
     val restaurant: String = "",
-    val dish: String = "", // Added dish field
+    val dish: String = "",
     val rating: Int = 0,
     val comment: String = "",
-    val title: String = "", // Added title field
-    val timestamp: Long = System.currentTimeMillis(), // For sorting reviews by recency
-    val photoUrl: String? = null // URL to the uploaded photo in Firebase Storage
+    val title: String = "",
+    val timestamp: Long = System.currentTimeMillis(),
+    val photoUrl: String? = null
 )

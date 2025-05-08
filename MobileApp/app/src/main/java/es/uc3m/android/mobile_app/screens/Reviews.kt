@@ -37,15 +37,11 @@ fun ReviewsScreen(
 ) {
     val reviews by viewModel.reviews.collectAsState()
 
-    // Load reviews from Firestore when the screen is composed
     LaunchedEffect(Unit) {
         viewModel.loadReviews()
     }
-
-    // Sort reviews by timestamp (most recent first)
     val sortedReviews = reviews.sortedByDescending { it.timestamp }
 
-    // State for fullscreen image dialog
     var selectedImageUrl by remember { mutableStateOf<String?>(null) }
 
     Column(modifier = Modifier.padding(16.dp)) {
@@ -69,7 +65,6 @@ fun ReviewsScreen(
         }
     }
 
-    // Fullscreen image dialog
     if (selectedImageUrl != null) {
         Dialog(
             onDismissRequest = { selectedImageUrl = null }
@@ -117,7 +112,6 @@ fun ReviewCard(
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            // User info row
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
@@ -157,14 +151,12 @@ fun ReviewCard(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Restaurant and dish info
             Text(
                 text = "${review.restaurant} • ${review.dish}",
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.primary
             )
 
-            // Rating row
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.padding(vertical = 4.dp)
@@ -195,7 +187,6 @@ fun ReviewCard(
                 modifier = Modifier.padding(vertical = 4.dp)
             )
 
-            // Photo if available
             if (!review.photoUrl.isNullOrEmpty()) {
                 Spacer(modifier = Modifier.height(12.dp))
 
@@ -206,7 +197,7 @@ fun ReviewCard(
                         .fillMaxWidth()
                         .height(200.dp)
                         .clip(RoundedCornerShape(8.dp))
-                        .clickable { onImageClick(review.photoUrl!!) }, // Call onImageClick when image is clicked
+                        .clickable { onImageClick(review.photoUrl!!) },
                     contentScale = ContentScale.Crop
                 )
             }

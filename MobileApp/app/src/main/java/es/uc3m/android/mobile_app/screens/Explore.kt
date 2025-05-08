@@ -1,11 +1,8 @@
 package es.uc3m.android.mobile_app.screens
 
-import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
-import android.content.pm.PackageManager
 import android.location.Location
-import android.location.LocationManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -18,8 +15,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.*
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.modifier.*
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.foundation.clickable
 import androidx.compose.ui.text.style.TextOverflow
@@ -33,57 +28,44 @@ import com.google.android.gms.maps.model.*
 import com.google.maps.android.compose.*
 import es.uc3m.android.mobile_app.NavGraph
 import es.uc3m.android.mobile_app.PermissionHandler
-import es.uc3m.android.mobile_app.R
-import es.uc3m.android.mobile_app.screens.Restaurant
 import es.uc3m.android.mobile_app.ui.theme.MyAppTheme
 import es.uc3m.android.mobile_app.viewmodel.DataState
 import es.uc3m.android.mobile_app.viewmodel.MyViewModel
-import es.uc3m.android.mobile_app.viewmodel.UserPreferences
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import coil.compose.AsyncImage
-import es.uc3m.android.mobile_app.viewmodel.Review
 import androidx.compose.ui.Modifier
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material.icons.filled.MyLocation
-import androidx.core.content.ContextCompat
 
 @Composable
 fun ExploreScreen(
     navController: NavHostController,
     viewModel: MyViewModel = viewModel()
 ) {
-    // Track if map is expanded (0 = normal, 1 = half screen, 2 = full screen)
     var mapExpandState by remember { mutableStateOf(0) }
 
-    // Load restaurants when the screen is first displayed
     LaunchedEffect(Unit) {
         viewModel.loadRestaurants()
         viewModel.loadUserPreferences()
         viewModel.getLatestReviewsFromFollowing()
     }
 
-    // Observe restaurants state (filtered ones)
     val filteredRestaurantsState by viewModel.filteredRestaurants.collectAsState()
-
-    // Observe user preferences
     val userPreferences by viewModel.userPreferences.collectAsState()
 
-    // Observe all restaurants (for map display)
     val allRestaurantsState by viewModel.restaurants.collectAsState()
 
     Column(modifier = Modifier.fillMaxSize()) {
-        // Section 1: Google Maps (Can take variable height depending on expansion state)
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .let {
                     when (mapExpandState) {
-                        0 -> it.weight(1f) // Normal 1/3 view
-                        1 -> it.weight(1.5f) // Half screen view
-                        2 -> it.fillMaxSize() // Full screen view
+                        0 -> it.weight(1f)
+                        1 -> it.weight(1.5f)
+                        2 -> it.fillMaxSize()
                         else -> it.weight(1f)
                     }
                 }
@@ -93,16 +75,14 @@ fun ExploreScreen(
         ) {
             GoogleMapWidget(filteredRestaurantsState)
 
-            // Control buttons for map size
             Row(
                 modifier = Modifier
                     .align(Alignment.TopStart)
                     .padding(16.dp)
             ) {
-                // If in full screen mode, add "Back" button
                 if (mapExpandState == 2) {
                     IconButton(
-                        onClick = { mapExpandState = 0 }, // Return to normal view
+                        onClick = { mapExpandState = 0 },
                         modifier = Modifier
                             .size(48.dp)
                             .background(
@@ -117,10 +97,8 @@ fun ExploreScreen(
                         )
                     }
                 } else {
-                    // Expand/collapse button cycles through states
                     IconButton(
                         onClick = {
-                            // Cycle through states: 0 -> 1 -> 2 -> 0
                             mapExpandState = (mapExpandState + 1) % 3
                         },
                         modifier = Modifier
@@ -166,7 +144,6 @@ fun ExploreScreen(
                             FilterChip(
                                 selected = true,
                                 onClick = {
-                                    // Navigate to settings
                                     navController.navigate(NavGraph.Settings.createRoute("From Explore"))
                                 },
                                 label = { Text("Food: ${prefs.foodType}") }
@@ -174,7 +151,6 @@ fun ExploreScreen(
                             FilterChip(
                                 selected = true,
                                 onClick = {
-                                    // Navigate to settings
                                     navController.navigate(NavGraph.Settings.createRoute("From Explore"))
                                 },
                                 label = { Text("Price: ${prefs.priceRange}") }
@@ -185,7 +161,6 @@ fun ExploreScreen(
             }
         }
 
-        // Container for Section 2 & 3 (Takes the remaining height) - only show when not in full screen mode
         if (mapExpandState != 2) {
             Column(modifier = Modifier.weight(if (mapExpandState == 1) 1.5f else 2f)) {
                 when (filteredRestaurantsState) {
@@ -227,7 +202,7 @@ fun ExploreScreen(
                                 }
                             }
                         } else {
-                            Column(modifier = Modifier.weight(1f)) { // Takes 1/2 of its parent's height
+                            Column(modifier = Modifier.weight(1f)) {
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
@@ -248,7 +223,7 @@ fun ExploreScreen(
                                 }
 
                                 LazyColumn(
-                                    modifier = Modifier.fillMaxSize() // Fill the space provided by the weighted parent Column
+                                    modifier = Modifier.fillMaxSize()
                                 ) {
                                     items(restaurants) { restaurant ->
                                         RestaurantItem(
@@ -263,7 +238,6 @@ fun ExploreScreen(
                                 }
                             }
 
-                            // Section 3: Friends Activity (Takes 1/2 of the remaining container)
                             Column(modifier = Modifier.weight(1f)) {
                                 FriendsActivitySectionContent(navController = navController)
                             }
@@ -271,7 +245,7 @@ fun ExploreScreen(
                     }
                 }
             }
-        } // Close if (mapExpandState != 2)
+        }
     }
 }
 
@@ -279,17 +253,14 @@ fun ExploreScreen(
 fun GoogleMapWidget(
     restaurantsState: DataState<List<Restaurant>>
 ) {
-    // Default to Madrid, Spain
     val madrid = LatLng(40.4168, -3.7038)
     val context = LocalContext.current
 
-    // User location state
     var userLocation by remember { mutableStateOf<LatLng?>(null) }
     var hasLocationPermission by remember { mutableStateOf(
         PermissionHandler.isLocationPermissionGranted(context)
     )}
 
-    // Permission launcher
     val locationPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
@@ -297,36 +268,31 @@ fun GoogleMapWidget(
         hasLocationPermission = allGranted
 
         if (allGranted) {
-            // Permissions granted, get user location
             getUserLocation(context) { location ->
                 userLocation = location
             }
         }
     }
 
-    // Camera position state
     val cameraPositionState = rememberCameraPositionState {
         position = CameraPosition.fromLatLngZoom(
-            userLocation ?: madrid, // Use user location if available, otherwise use Madrid
+            userLocation ?: madrid,
             12f
         )
     }
 
-    // Request location permissions if not granted
     LaunchedEffect(Unit) {
         if (!hasLocationPermission) {
             locationPermissionLauncher.launch(
                 PermissionHandler.getLocationPermissions().toTypedArray()
             )
         } else {
-            // Permissions already granted, get user location
             getUserLocation(context) { location ->
                 userLocation = location
             }
         }
     }
 
-    // Update camera position when user location changes
     LaunchedEffect(userLocation) {
         userLocation?.let { location ->
             cameraPositionState.position = CameraPosition.fromLatLngZoom(location, 15f)
@@ -341,7 +307,6 @@ fun GoogleMapWidget(
                 isMyLocationEnabled = hasLocationPermission
             )
         ) {
-            // Display user location with a custom marker
             userLocation?.let { location ->
                 Marker(
                     state = MarkerState(position = location),
@@ -350,9 +315,8 @@ fun GoogleMapWidget(
                 )
             }
 
-            // Display restaurant markers
             if (restaurantsState is DataState.Success) {
-                val restaurants = (restaurantsState as DataState.Success<List<Restaurant>>).data
+                val restaurants = (restaurantsState).data
                 restaurants.forEach { restaurant ->
                     val position = LatLng(
                         restaurant.location.latitude,
@@ -387,15 +351,13 @@ private fun getUserLocation(context: Context, onLocationReceived: (LatLng) -> Un
             }
         }
     } catch (e: Exception) {
-        // Handle error
         println("Error getting location: ${e.message}")
     }
 }
 
-// Restaurant Item Composable (No changes needed here)
 @Composable
 fun RestaurantItem(
-    restaurant: Restaurant, // Assuming Restaurant has an imageUrl property
+    restaurant: Restaurant,
     onClick: () -> Unit
 ) {
     Row(
@@ -404,19 +366,15 @@ fun RestaurantItem(
             .clickable(onClick = onClick)
             .padding(16.dp)
     ) {
-        // Box for sizing and clipping the image
         Box(
             modifier = Modifier
                 .size(80.dp) // Define the size of the image area
                 .clip(RoundedCornerShape(8.dp))
-                // Add a background color to the Box itself in case the placeholder/error is transparent
-                // or if the image loading takes time.
                 .background(Color.LightGray)
         ) {
-            // Use AsyncImage to load the restaurant photo
             AsyncImage(
-                model = restaurant.imageUrl, // The URL of the restaurant's image
-                contentDescription = restaurant.name, // Accessibility: Describe the image
+                model = restaurant.imageUrl, // The URL
+                contentDescription = restaurant.name, // Accessibility
                 modifier = Modifier.fillMaxSize(), // Make the image fill the Box
                 contentScale = ContentScale.Crop, // Crop the image to fit the bounds
             )
@@ -476,7 +434,6 @@ fun FriendsActivitySectionContent(
                                 modifier = Modifier.fillMaxWidth(),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                // Review photo display
                                 if (!review.photoUrl.isNullOrEmpty()) {
                                     Box(
                                         modifier = Modifier

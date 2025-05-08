@@ -38,7 +38,6 @@ import androidx.core.content.FileProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import coil.compose.rememberAsyncImagePainter
-import es.uc3m.android.mobile_app.PermissionHandler
 import es.uc3m.android.mobile_app.viewmodel.MyViewModel
 import es.uc3m.android.mobile_app.viewmodel.Review
 import java.io.File
@@ -75,10 +74,8 @@ fun DishReviewScreen(
     var showPermissionSettingsDialog by remember { mutableStateOf(false) }
     var permissionDeniedMessage by remember { mutableStateOf("") }
 
-    // Generate a timestamp-based filename for temporary photo file
     val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
 
-    // Create a scope-level photoFile that can be accessed later
     val photoFile = remember {
         File.createTempFile(
             "JPEG_${timeStamp}_",
@@ -102,10 +99,8 @@ fun DishReviewScreen(
         val allPermissionsGranted = permissions.entries.all { it.value }
 
         if (allPermissionsGranted) {
-            // All permissions granted, open image options
             showImageOptions = true
         } else {
-            // Check which permission was denied
             if (permissions[Manifest.permission.CAMERA] == false) {
                 showCameraPermissionRationale = true
             }
@@ -117,13 +112,11 @@ fun DishReviewScreen(
         }
     }
 
-    // Photo picker launcher
     val photoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         uri?.let {
             try {
-                // Create a copy of the selected image in app's cache directory
                 val inputStream = context.contentResolver.openInputStream(it)
                 val tempFile = File.createTempFile(
                     "JPEG_${timeStamp}_",
@@ -142,7 +135,6 @@ fun DishReviewScreen(
         }
     }
 
-    // Camera launcher - FIXED to update the imageUri correctly after taking a photo
     val cameraLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.TakePicture()
     ) { success ->
@@ -150,7 +142,6 @@ fun DishReviewScreen(
             try {
                 // Ensure the photo file exists and has content
                 if (photoFile.exists() && photoFile.length() > 0) {
-                    // Update UI with the image from the camera
                     imageUri = photoUri
                 } else {
                     submitError = "Camera returned success but photo file is empty or missing"
@@ -174,7 +165,6 @@ fun DishReviewScreen(
         }
     }
 
-    // Storage permission launcher
     val storagePermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { isGranted ->
@@ -185,7 +175,6 @@ fun DishReviewScreen(
         }
     }
 
-    // Remember scroll state
     val scrollState = rememberScrollState()
 
     Box(
@@ -212,7 +201,6 @@ fun DishReviewScreen(
                 modifier = Modifier.padding(bottom = 16.dp)
             )
 
-            // Title input
             OutlinedTextField(
                 value = title,
                 onValueChange = { title = it },
@@ -223,7 +211,6 @@ fun DishReviewScreen(
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next)
             )
 
-            // Rating selector
             Text(
                 text = "Rating",
                 style = MaterialTheme.typography.bodyLarge,
@@ -249,7 +236,6 @@ fun DishReviewScreen(
                 }
             }
 
-            // Photo section
             Text(
                 text = "Add Photo (Optional)",
                 style = MaterialTheme.typography.bodyLarge,
@@ -260,7 +246,6 @@ fun DishReviewScreen(
 
             // Image preview or placeholder
             if (imageUri != null) {
-                // Display the selected image
                 Box(
                     modifier = Modifier
                         .size(200.dp)
@@ -274,7 +259,6 @@ fun DishReviewScreen(
                         contentScale = ContentScale.Crop
                     )
 
-                    // Remove photo button
                     IconButton(
                         onClick = { imageUri = null },
                         modifier = Modifier
@@ -295,14 +279,12 @@ fun DishReviewScreen(
                     }
                 }
             } else {
-                // Image selection placeholder
                 Box(
                     modifier = Modifier
                         .size(200.dp)
                         .clip(RoundedCornerShape(8.dp))
                         .border(1.dp, Color.Gray, RoundedCornerShape(8.dp))
                         .clickable {
-                            // First, check permissions before showing image options
                             val requiredPermissions = PermissionHandler.getRequiredImagePermissions()
                             multiplePermissionsLauncher.launch(requiredPermissions.toTypedArray())
                         },
@@ -364,18 +346,16 @@ fun DishReviewScreen(
                         rating = rating,
                         comment = comment,
                         title = title,
-                        photoUrl = "", // This will be filled by the ViewModel
+                        photoUrl = "",
                         timestamp = System.currentTimeMillis()
                     )
 
-                    // Show loading state
                     viewModel.addDishReview(
                         review = review,
                         imageUri = imageUri,
                         onSuccess = {
                             isSubmitting = false
                             submitSuccess = true
-                            // Navigate back after short delay
                             navController.popBackStack()
                         },
                         onError = { error ->
@@ -422,14 +402,10 @@ fun DishReviewScreen(
                 Text("Cancel")
             }
 
-            // Add extra space at the bottom for comfortable scrolling
             Spacer(modifier = Modifier.height(32.dp))
         }
     }
 
-    // Dialogs remain outside the scrollable area
-
-    // Image source dialog
     if (showImageOptions) {
         AlertDialog(
             onDismissRequest = { showImageOptions = false },
@@ -439,7 +415,6 @@ fun DishReviewScreen(
                 Button(
                     onClick = {
                         showImageOptions = false
-                        // Check storage permission
                         val storagePermission = PermissionHandler.getStoragePermission()
                         if (PermissionHandler.isStoragePermissionGranted(context)) {
                             photoPickerLauncher.launch("image/*")
@@ -464,13 +439,10 @@ fun DishReviewScreen(
                         showImageOptions = false
                         // Check camera permission
                         if (PermissionHandler.isCameraPermissionGranted(context)) {
-                            // Reset photoFile to ensure we're working with a fresh file
                             try {
-                                // Make sure the temp file is valid and writable before launching camera
                                 if (!photoFile.exists()) {
                                     photoFile.createNewFile()
                                 } else if (!photoFile.canWrite()) {
-                                    // Create a new file if current one can't be written to
                                     photoFile.delete()
                                     photoFile.createNewFile()
                                 }
@@ -524,7 +496,6 @@ fun DishReviewScreen(
         )
     }
 
-    // Storage permission rationale dialog
     if (showStoragePermissionRationale) {
         AlertDialog(
             onDismissRequest = { showStoragePermissionRationale = false },
@@ -553,7 +524,6 @@ fun DishReviewScreen(
         )
     }
 
-    // Settings dialog for permanently denied permissions
     if (showPermissionSettingsDialog) {
         AlertDialog(
             onDismissRequest = { showPermissionSettingsDialog = false },
@@ -564,7 +534,6 @@ fun DishReviewScreen(
             confirmButton = {
                 Button(onClick = {
                     showPermissionSettingsDialog = false
-                    // Open app settings
                     val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
                         data = Uri.fromParts("package", context.packageName, null)
                     }

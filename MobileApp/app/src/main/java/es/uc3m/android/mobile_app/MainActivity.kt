@@ -6,28 +6,21 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.annotation.RequiresApi
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Explore
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Reviews
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.outlined.Explore
 import androidx.compose.material.icons.outlined.Reviews
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.rounded.Menu
-import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.DrawerState
 import androidx.compose.material3.DrawerValue
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ModalDrawerSheet
@@ -46,10 +39,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
@@ -87,7 +78,6 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             MyAppTheme {
-                // Create a single ViewModel instance to share across the app
                 val viewModel: MyViewModel = viewModel()
                 MyScreen(viewModel)
             }
@@ -109,11 +99,9 @@ fun MyScreen(viewModel: MyViewModel) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val snack = remember { SnackbarHostState() }
 
-    // --- Observe Authentication State ---
     val isLoggedIn by viewModel.isUserLoggedIn.collectAsState()
     val authResult by viewModel.authResult.collectAsState()
 
-    // --- Define Navigation Items ---
     val allItems = remember {
         listOf(
             NavigationItem(
@@ -143,7 +131,6 @@ fun MyScreen(viewModel: MyViewModel) {
         )
     }
 
-    // --- Determine Visible Navigation Items Based on Auth State ---
     val visibleItems = remember(isLoggedIn) {
         if (isLoggedIn) {
             allItems.filter { it.route != NavGraph.Login.route && it.route != NavGraph.SignUp.route }
@@ -152,14 +139,12 @@ fun MyScreen(viewModel: MyViewModel) {
         }
     }
 
-    // --- Preload Restaurants Data When Logged In ---
     LaunchedEffect(isLoggedIn) {
         if (isLoggedIn) {
             viewModel.loadRestaurants()
         }
     }
 
-    // --- Handle Post-Authentication Navigation ---
     LaunchedEffect(isLoggedIn, authResult) {
         if (isLoggedIn && authResult == AuthResult.Success) {
             navController.navigate(NavGraph.Explore.route) {
@@ -172,7 +157,6 @@ fun MyScreen(viewModel: MyViewModel) {
         }
     }
 
-    // --- Handle Authentication Errors ---
     LaunchedEffect(authResult) {
         if (authResult is AuthResult.Error) {
             snack.showSnackbar("Error: ${(authResult as AuthResult.Error).message}")
@@ -180,7 +164,6 @@ fun MyScreen(viewModel: MyViewModel) {
         }
     }
 
-    // --- Main UI Structure ---
     ModalNavigationDrawer(
         drawerState = drawerState,
         gesturesEnabled = isLoggedIn,
@@ -244,7 +227,6 @@ fun MyTopAppBar(scope: CoroutineScope, drawerState: DrawerState, snack: Snackbar
         )
 }
 
-// --- Updated MyContent ---
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun MyContent(
@@ -260,7 +242,6 @@ fun MyContent(
         navController = navController,
         startDestination = startDestination,
     ) {
-        // --- Authentication Routes ---
         composable(NavGraph.Login.route) {
             LoginScreen(navController = navController, viewModel = viewModel)
         }
@@ -268,7 +249,6 @@ fun MyContent(
             SignUpScreen(viewModel = viewModel, navController = navController)
         }
 
-        // --- Main App Routes ---
         composable(NavGraph.Explore.route) {
             ExploreScreen(navController = navController, viewModel = viewModel)
         }
@@ -286,7 +266,6 @@ fun MyContent(
             MyProfileScreen(navController = navController, viewModel = viewModel)
         }
 
-        // Restaurant detail navigation with optional ID
         composable(
             NavGraph.RestaurantDetails.route,
             arguments = listOf(
@@ -305,7 +284,6 @@ fun MyContent(
             )
         }
 
-        // New: Dish Review Route
         composable(
             NavGraph.DishReview.route,
             arguments = listOf(
@@ -330,7 +308,6 @@ fun MyContent(
             )
         }
 
-        // New: Dish Reviews List Route
         composable(
             NavGraph.DishReviewsList.route,
             arguments = listOf(
@@ -418,7 +395,6 @@ fun MyDrawerContent(
             )
         }
 
-        // Add logout item separately
         NavigationDrawerItem(
             label = { Text("Logout") },
             selected = false,
@@ -428,7 +404,7 @@ fun MyDrawerContent(
             },
             icon = {
                 Icon(
-                    imageVector = Icons.Filled.AccountCircle, // Use appropriate logout icon
+                    imageVector = Icons.Filled.AccountCircle,
                     contentDescription = "Logout"
                 )
             },
@@ -456,17 +432,11 @@ fun MyNavigationBar(
                     if (item.route == "logout_action") {
                         viewModel.logout()
                     } else {
-                        // --- Handle Regular Navigation ---
-                        // Always navigate to the selected destination
                         navController.navigate(item.route) {
-                            // Pop up to the destination route itself, inclusively.
-                            // This clears any screens that were pushed on top of this destination within the tab.
                             popUpTo(item.route) {
                                 inclusive = true
                             }
-                            // Avoid multiple copies of the same destination when reselecting the same item
                             launchSingleTop = true
-                            // Restore state when navigating back to previously visited destinations
                             restoreState = true
                         }
                     }

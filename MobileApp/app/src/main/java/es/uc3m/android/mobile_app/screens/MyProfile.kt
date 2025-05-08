@@ -23,7 +23,6 @@ import java.util.*
 import androidx.compose.foundation.clickable
 import androidx.compose.material3.MaterialTheme
 import es.uc3m.android.mobile_app.NavGraph
-import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
@@ -169,7 +168,6 @@ fun MyProfileScreen(
         }
     }
 
-    // Delete confirmation dialog
     showDeleteConfirmation?.let { reviewId ->
         AlertDialog(
             onDismissRequest = { showDeleteConfirmation = null },
@@ -217,7 +215,6 @@ fun ReviewItemCard(
         Column(
             modifier = Modifier.padding(16.dp)
         ) {
-            // Display photo if available
             if (!review.photoUrl.isNullOrEmpty()) {
                 Box(
                     modifier = Modifier
@@ -236,7 +233,6 @@ fun ReviewItemCard(
                 Spacer(modifier = Modifier.height(12.dp))
             }
 
-            // Restaurant and dish info
             Text(
                 text = "${review.dish} at ${review.restaurant}",
                 style = MaterialTheme.typography.titleMedium,
@@ -246,7 +242,6 @@ fun ReviewItemCard(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Rating and title
             Row(
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -269,7 +264,6 @@ fun ReviewItemCard(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Review comment
             Text(
                 text = review.comment,
                 style = MaterialTheme.typography.bodyMedium,
@@ -284,7 +278,6 @@ fun ReviewItemCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Format timestamp
                 val formatter = SimpleDateFormat("MMM d, yyyy", Locale.getDefault())
                 val dateString = formatter.format(Date(review.timestamp))
 
@@ -294,7 +287,6 @@ fun ReviewItemCard(
                     color = Color.Gray
                 )
 
-                // Delete button
                 IconButton(onClick = onDeleteReview) {
                     Icon(
                         imageVector = Icons.Default.Delete,

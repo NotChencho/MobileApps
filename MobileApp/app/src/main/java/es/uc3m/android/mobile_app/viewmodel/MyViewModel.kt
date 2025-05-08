@@ -11,13 +11,10 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import es.uc3m.android.mobile_app.screens.Restaurant
-import es.uc3m.android.mobile_app.screens.GeoPoint
-import es.uc3m.android.mobile_app.screens.Dish
 import android.net.Uri
 import com.google.firebase.storage.FirebaseStorage
 import java.util.UUID
 
-// --- Auth Result Sealed Class ---
 sealed class AuthResult {
     object Success : AuthResult()
     data class Error(val message: String) : AuthResult()
@@ -25,14 +22,12 @@ sealed class AuthResult {
     object Idle : AuthResult()
 }
 
-// --- Data Loading State ---
 sealed class DataState<out T> {
     object Loading : DataState<Nothing>()
     data class Success<T>(val data: T) : DataState<T>()
     data class Error(val message: String) : DataState<Nothing>()
 }
 
-// --- Save Preferences Status ---
 sealed class SaveStatus {
     object Idle : SaveStatus()
     object Loading : SaveStatus()
@@ -40,7 +35,6 @@ sealed class SaveStatus {
     data class Error(val message: String) : SaveStatus()
 }
 
-// --- User Preferences Data Class ---
 data class UserPreferences(
     val foodType: String = "",
     val priceRange: String = "",

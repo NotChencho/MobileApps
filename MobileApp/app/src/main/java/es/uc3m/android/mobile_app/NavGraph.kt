@@ -45,7 +45,6 @@ sealed class NavGraph(val route: String, val arguments: List<NamedNavArgument> =
             "$REVIEW_DETAILS_ROUTE/$friend/$restaurant"
     }
 
-    // Updated RestaurantDetails to optionally accept an ID
     data object RestaurantDetails : NavGraph(
         route = "$RESTAURANT_DETAILS_ROUTE?restaurantId={restaurantId}",
         arguments = listOf(
@@ -65,7 +64,6 @@ sealed class NavGraph(val route: String, val arguments: List<NamedNavArgument> =
         }
     }
 
-    // New: Dish Review route for adding a new review
     data object DishReview : NavGraph(
         route = "$DISH_REVIEW_ROUTE/{restaurantId}/{restaurantName}/{dishName}",
         arguments = listOf(
@@ -81,7 +79,6 @@ sealed class NavGraph(val route: String, val arguments: List<NamedNavArgument> =
             "$DISH_REVIEW_ROUTE/$restaurantId/$restaurantName/$dishName"
     }
 
-    // New: Dish Reviews List route for viewing all reviews for a dish
     data object DishReviewsList : NavGraph(
         route = "$DISH_REVIEWS_LIST_ROUTE/{restaurantName}/{dishName}",
         arguments = listOf(
