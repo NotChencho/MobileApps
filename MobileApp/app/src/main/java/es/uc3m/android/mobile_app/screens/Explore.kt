@@ -1,6 +1,13 @@
 package es.uc3m.android.mobile_app.screens
 
+import android.Manifest
 import android.annotation.SuppressLint
+import android.content.Context
+import android.content.pm.PackageManager
+import android.location.Location
+import android.location.LocationManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -20,9 +27,12 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
+import com.google.android.gms.location.FusedLocationProviderClient
+import com.google.android.gms.location.LocationServices
 import com.google.android.gms.maps.model.*
 import com.google.maps.android.compose.*
 import es.uc3m.android.mobile_app.NavGraph
+import es.uc3m.android.mobile_app.PermissionHandler
 import es.uc3m.android.mobile_app.R
 import es.uc3m.android.mobile_app.screens.Restaurant
 import es.uc3m.android.mobile_app.ui.theme.MyAppTheme
@@ -30,15 +40,15 @@ import es.uc3m.android.mobile_app.viewmodel.DataState
 import es.uc3m.android.mobile_app.viewmodel.MyViewModel
 import es.uc3m.android.mobile_app.viewmodel.UserPreferences
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
-import coil.compose.AsyncImage
 import androidx.compose.ui.platform.LocalContext
+import coil.compose.AsyncImage
 import es.uc3m.android.mobile_app.viewmodel.Review
 import androidx.compose.ui.Modifier
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
-
+import androidx.compose.material.icons.filled.MyLocation
+import androidx.core.content.ContextCompat
 
 @Composable
 fun ExploreScreen(
@@ -271,34 +281,114 @@ fun GoogleMapWidget(
 ) {
     // Default to Madrid, Spain
     val madrid = LatLng(40.4168, -3.7038)
-    val cameraPositionState = rememberCameraPositionState {
-        position = CameraPosition.fromLatLngZoom(madrid, 12f)
-    }
+    val context = LocalContext.current
 
-    GoogleMap(
-        modifier = Modifier.fillMaxSize(), // Fill the parent Box
-        cameraPositionState = cameraPositionState
-    ) {
-        Marker(
-            state = MarkerState(position = madrid),
-            title = "Madrid",
-            snippet = "Capital of Spain"
-        )
+    // User location state
+    var userLocation by remember { mutableStateOf<LatLng?>(null) }
+    var hasLocationPermission by remember { mutableStateOf(
+        PermissionHandler.isLocationPermissionGranted(context)
+    )}
 
-        if (restaurantsState is DataState.Success) {
-            val restaurants = (restaurantsState as DataState.Success<List<Restaurant>>).data
-            restaurants.forEach { restaurant ->
-                val position = LatLng(
-                    restaurant.location.latitude,
-                    restaurant.location.longitude
-                )
-                Marker(
-                    state = MarkerState(position = position),
-                    title = restaurant.name,
-                    snippet = restaurant.cuisine
-                )
+    // Permission launcher
+    val locationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val allGranted = permissions.entries.all { it.value }
+        hasLocationPermission = allGranted
+
+        if (allGranted) {
+            // Permissions granted, get user location
+            getUserLocation(context) { location ->
+                userLocation = location
             }
         }
+    }
+
+    // Camera position state
+    val cameraPositionState = rememberCameraPositionState {
+        position = CameraPosition.fromLatLngZoom(
+            userLocation ?: madrid, // Use user location if available, otherwise use Madrid
+            12f
+        )
+    }
+
+    // Request location permissions if not granted
+    LaunchedEffect(Unit) {
+        if (!hasLocationPermission) {
+            locationPermissionLauncher.launch(
+                PermissionHandler.getLocationPermissions().toTypedArray()
+            )
+        } else {
+            // Permissions already granted, get user location
+            getUserLocation(context) { location ->
+                userLocation = location
+            }
+        }
+    }
+
+    // Update camera position when user location changes
+    LaunchedEffect(userLocation) {
+        userLocation?.let { location ->
+            cameraPositionState.position = CameraPosition.fromLatLngZoom(location, 15f)
+        }
+    }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        GoogleMap(
+            modifier = Modifier.fillMaxSize(), // Fill the parent Box
+            cameraPositionState = cameraPositionState,
+            properties = MapProperties(
+                isMyLocationEnabled = hasLocationPermission
+            )
+        ) {
+            // Display user location with a custom marker
+            userLocation?.let { location ->
+                Marker(
+                    state = MarkerState(position = location),
+                    title = "Your Location",
+                    snippet = "You are here"
+                )
+            }
+
+            // Display restaurant markers
+            if (restaurantsState is DataState.Success) {
+                val restaurants = (restaurantsState as DataState.Success<List<Restaurant>>).data
+                restaurants.forEach { restaurant ->
+                    val position = LatLng(
+                        restaurant.location.latitude,
+                        restaurant.location.longitude
+                    )
+                    Marker(
+                        state = MarkerState(position = position),
+                        title = restaurant.name,
+                        snippet = restaurant.cuisine
+                    )
+                }
+            }
+        }
+    }
+}
+
+@SuppressLint("MissingPermission")
+private fun getUserLocation(context: Context, onLocationReceived: (LatLng) -> Unit) {
+    // Check if we have permission
+    if (!PermissionHandler.isLocationPermissionGranted(context)) {
+        return
+    }
+
+    try {
+        val fusedLocationClient: FusedLocationProviderClient =
+            LocationServices.getFusedLocationProviderClient(context)
+
+        fusedLocationClient.lastLocation.addOnSuccessListener { location: Location? ->
+            location?.let {
+                val userLatLng = LatLng(location.latitude, location.longitude)
+                onLocationReceived(userLatLng)
+            }
+        }
+    } catch (e: Exception) {
+        // Handle error
+        println("Error getting location: ${e.message}")
     }
 }
 

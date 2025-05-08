@@ -11,6 +11,7 @@ composeBom = "2024.04.01"
 google-services = "4.4.2"
 firebaseBom = "33.10.0"
 runtimeLivedata = "1.7.8"
+playServicesLocation = "21.3.0"
 
 
 [libraries]
@@ -32,6 +33,7 @@ firebase-firestore = { module = "com.google.firebase:firebase-firestore" }
 firebase-bom = { module = "com.google.firebase:firebase-bom", version.ref = "firebaseBom" }
 firebase-auth = { module = "com.google.firebase:firebase-auth" }
 androidx-runtime-livedata = { module ="androidx.compose.runtime:runtime-livedata", version.ref = "runtimeLivedata"}
+play-services-location = { group = "com.google.android.gms", name = "play-services-location", version.ref = "playServicesLocation" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

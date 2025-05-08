@@ -53,6 +53,7 @@ dependencies {
     implementation("androidx.navigation:navigation-runtime-android:2.9.0-alpha08")
     implementation("androidx.navigation:navigation-compose:2.8.9")
     implementation("androidx.compose.material:material-icons-extended:<latest_version>")
+    implementation(libs.play.services.location)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

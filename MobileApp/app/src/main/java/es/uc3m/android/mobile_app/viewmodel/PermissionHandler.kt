@@ -33,6 +33,30 @@ object PermissionHandler {
         ) == PackageManager.PERMISSION_GRANTED
     }
 
+    // Check if location permissions are granted
+    fun isLocationPermissionGranted(context: Context): Boolean {
+        return ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.ACCESS_FINE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED ||
+                ContextCompat.checkSelfPermission(
+                    context,
+                    Manifest.permission.ACCESS_COARSE_LOCATION
+                ) == PackageManager.PERMISSION_GRANTED
+    }
+
+    // Get the location permissions needed based on precision requirement
+    fun getLocationPermissions(requirePrecise: Boolean = true): List<String> {
+        return if (requirePrecise) {
+            listOf(
+                Manifest.permission.ACCESS_FINE_LOCATION,
+                Manifest.permission.ACCESS_COARSE_LOCATION
+            )
+        } else {
+            listOf(Manifest.permission.ACCESS_COARSE_LOCATION)
+        }
+    }
+
     // Get all required permissions for image handling
     fun getRequiredImagePermissions(): List<String> {
         val permissions = mutableListOf(Manifest.permission.CAMERA)
