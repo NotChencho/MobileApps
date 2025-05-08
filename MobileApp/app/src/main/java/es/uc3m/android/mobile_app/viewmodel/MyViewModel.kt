@@ -47,7 +47,7 @@ class MyViewModel : ViewModel() {
 
     private val auth: FirebaseAuth = FirebaseAuth.getInstance()
     private val db = FirebaseFirestore.getInstance()
-    private val followCollection = db.collection("follows") // <-- NUEVO
+    private val followCollection = db.collection("follows")
     private val _recentReviewsFromFollowed = MutableStateFlow<List<Review>>(emptyList())
     val recentReviewsFromFollowed: StateFlow<List<Review>> = _recentReviewsFromFollowed
 

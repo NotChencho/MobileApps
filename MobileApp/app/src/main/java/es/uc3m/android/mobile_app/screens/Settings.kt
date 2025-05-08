@@ -42,9 +42,6 @@ fun SettingsScreen(
     val currentPreferences by viewModel.userPreferences.collectAsState()
     val saveStatus by viewModel.savePreferencesStatus.collectAsState()
 
-    source?.let {
-        Toast.makeText(context, "Opened from: $it", Toast.LENGTH_SHORT).show()
-    }
 
     LaunchedEffect(saveStatus) {
         when (saveStatus) {
